@@ -1,0 +1,100 @@
+[
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "frontend/src/app/globals.css",
+    "line": 869,
+    "snippet": "border-left: 3px solid var(--blue)",
+    "importedBy": [
+      "layout.tsx"
+    ]
+  },
+  {
+    "antipattern": "overused-font",
+    "name": "Overused font",
+    "description": "Inter, Roboto, Fraunces, Geist, Plus Jakarta Sans, and Space Grotesk are used on so many sites they no longer feel distinctive. Each new wave of AI-generated UIs converges on the same handful of faces. Choose a face that gives your interface personality.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "frontend/src/app/globals.css",
+    "line": 1,
+    "snippet": "Google Fonts: inter",
+    "importedBy": [
+      "layout.tsx"
+    ]
+  },
+  {
+    "antipattern": "codex-grid-background",
+    "name": "Decorative grid-line background",
+    "description": "A decorative grid or line-field background drawn with hairline linear-gradient layers tiled by a fixed pixel cell is a recurring generated-UI signature. Reserve grid overlays for actual canvas, map, blueprint, or measurement surfaces; elsewhere use product structure or a plain surface.",
+    "severity": "advisory",
+    "category": "slop",
+    "file": "frontend/src/app/globals.css",
+    "line": 491,
+    "snippet": "two-axis grid-line gradient background",
+    "advisory": true,
+    "importedBy": [
+      "layout.tsx"
+    ]
+  },
+  {
+    "antipattern": "layout-transition",
+    "name": "Layout property animation",
+    "description": "Animating width, height, padding, or margin causes layout thrash and janky performance. Use transform and opacity instead, or grid-template-rows for height animations.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "frontend/src/app/quiz/flashcard/[code]/client-page.tsx",
+    "line": 545,
+    "snippet": "transition: width",
+    "importedBy": [
+      "page.tsx"
+    ]
+  },
+  {
+    "antipattern": "bounce-easing",
+    "name": "Bounce or elastic easing",
+    "description": "Bounce and elastic easing feel dated and tacky. Real objects decelerate smoothly — use exponential easing (ease-out-quart/quint/expo) instead.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "frontend/src/app/quiz/live/[code]/client-page.tsx",
+    "line": 132,
+    "snippet": "animate-bounce (Tailwind)",
+    "importedBy": [
+      "page.tsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "frontend/src/components/admin/AdminUI.tsx",
+    "line": 192,
+    "snippet": "borderLeft: '5px solid",
+    "importedBy": [
+      "ExamPanel.tsx",
+      "PollLivePanel.tsx",
+      "QuizLivePanel.tsx",
+      "SkillsExamPanel.tsx"
+    ]
+  },
+  {
+    "antipattern": "side-tab",
+    "name": "Side-tab accent border",
+    "description": "Thick colored border on one side of a card — the most recognizable tell of AI-generated UIs. Use a subtler accent or remove it entirely.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "frontend/src/components/admin/AdminUI.tsx",
+    "line": 193,
+    "snippet": "borderRight: '5px solid",
+    "importedBy": [
+      "ExamPanel.tsx",
+      "PollLivePanel.tsx",
+      "QuizLivePanel.tsx",
+      "SkillsExamPanel.tsx"
+    ]
+  }
+]

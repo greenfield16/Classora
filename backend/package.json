@@ -1,0 +1,59 @@
+{
+  "name": "greenfield-exams-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main",
+    "seed": "ts-node -r dotenv/config src/seed.ts",
+    "backfill:exam-results": "ts-node -r dotenv/config src/backfill-exam-results.ts",
+    "test": "node --test -r ts-node/register test/*.test.cjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "@nestjs/common": "^12.2.0",
+    "@nestjs/config": "^12.0.1",
+    "@nestjs/core": "^12.2.0",
+    "@nestjs/jwt": "^12.0.3",
+    "@nestjs/mongoose": "^12.0.0",
+    "@nestjs/passport": "^12.0.0",
+    "@nestjs/platform-express": "^12.2.0",
+    "@types/adm-zip": "^0.5.8",
+    "@types/multer": "^2.1.0",
+    "@types/pdfmake": "^0.3.3",
+    "adm-zip": "0.6.1",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.0",
+    "class-validator": "^0.14.0",
+    "compression": "^1.7.4",
+    "dotenv": "^16.0.0",
+    "firebase-admin": "^14.5.0",
+    "helmet": "^7.0.0",
+    "mongodb": "^7.2.0",
+    "mongoose": "^8.0.0",
+    "multer": "^2.1.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.0",
+    "pdfmake": "^0.2.23",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "xml2js": "^0.6.0"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^12.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.0.0",
+    "@types/passport-jwt": "^4.0.0",
+    "@types/xml2js": "^0.4.14",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "license": "Apache-2.0",
+  "author": "Joseph. MD"
+}

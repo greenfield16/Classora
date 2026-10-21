@@ -1,0 +1,97 @@
+{
+  "findings": [
+    {
+      "path": ".env",
+      "category": "private environment file (not read)"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/tsconfig.tsbuildinfo",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "backend/package-lock.json",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "backend/.env",
+      "category": "private environment file (not read)"
+    },
+    {
+      "path": "docs/RELEASE_CHECKLIST.md",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "functions/package-lock.json",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "functions/.env",
+      "category": "private environment file (not read)"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "backend/src/migrate.ts",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "backend/src/storage/storage.service.ts",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "backend/src/ai/prompt-builder.ts",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "backend/src/exams/services/pdf-report.service.ts",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/public/logo.svg",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/src/app/layout.tsx",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/src/app/page.tsx",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/src/lib/firebase.ts",
+      "category": "embedded credential/project configuration"
+    },
+    {
+      "path": "frontend/src/lib/api.ts",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/src/lib/store.ts",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/src/app/quiz/flashcard/[code]/client-page.tsx",
+      "category": "legacy/provenance marker"
+    },
+    {
+      "path": "frontend/src/app/admin/login/page.tsx",
+      "category": "legacy/provenance marker"
+    }
+  ],
+  "omitted_counts": {
+    "binary assets not scanned": 8,
+    "excluded data/assets needing owner review": 1
+  },
+  "note": "Heuristic scan; no proof of ownership or absence of secrets. Private environment values were not read."
+}

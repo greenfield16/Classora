@@ -1,0 +1,118 @@
+[
+  {
+    "panel": "Đề thi",
+    "headings": [
+      "Green Exams",
+      "Tạo bài thi mới",
+      "Danh sách bài thi (0)"
+    ],
+    "inputs": 7,
+    "unlabelled": 7,
+    "visibleButtons": 23
+  },
+  {
+    "panel": "Đề thi kỹ năng",
+    "headings": [
+      "Green Exams",
+      "Tạo mẫu đề kỹ năng",
+      "Mẫu đề đã tạo"
+    ],
+    "inputs": 5,
+    "unlabelled": 5,
+    "visibleButtons": 22
+  },
+  {
+    "panel": "Kết quả",
+    "headings": [
+      "Green Exams",
+      "Kết quả thi"
+    ],
+    "inputs": 0,
+    "unlabelled": 0,
+    "visibleButtons": 15
+  },
+  {
+    "panel": "Phân tích",
+    "headings": [
+      "Green Exams",
+      "Phân tích câu hỏi",
+      "Xuất báo cáo PDF"
+    ],
+    "inputs": 2,
+    "unlabelled": 2,
+    "visibleButtons": 19
+  },
+  {
+    "panel": "Học sinh",
+    "headings": [
+      "Green Exams",
+      "Dashboard học sinh",
+      "Thêm học sinh"
+    ],
+    "inputs": 5,
+    "unlabelled": 5,
+    "visibleButtons": 22
+  },
+  {
+    "panel": "Quiz Live",
+    "headings": [
+      "Green Exams",
+      "Tạo bộ Quiz Live",
+      "Bộ quiz đã tạo"
+    ],
+    "inputs": 11,
+    "unlabelled": 7,
+    "visibleButtons": 19
+  },
+  {
+    "panel": "Bình chọn",
+    "headings": [
+      "Green Exams",
+      "Tạo bộ Bình chọn trực tiếp",
+      "Bộ bình chọn đã tạo"
+    ],
+    "inputs": 9,
+    "unlabelled": 8,
+    "visibleButtons": 20
+  },
+  {
+    "panel": "Flashcard SRS",
+    "headings": [
+      "Green Exams",
+      "Tạo bộ Flashcard mới",
+      "Bộ Flashcard đã tạo"
+    ],
+    "inputs": 2,
+    "unlabelled": 2,
+    "visibleButtons": 18
+  },
+  {
+    "panel": "Hướng dẫn",
+    "headings": [
+      "Green Exams",
+      "Hướng dẫn sử dụng theo chức năng"
+    ],
+    "inputs": 0,
+    "unlabelled": 0,
+    "visibleButtons": 15
+  },
+  {
+    "panel": "Góp ý",
+    "headings": [
+      "Green Exams",
+      "Gửi góp ý"
+    ],
+    "inputs": 3,
+    "unlabelled": 2,
+    "visibleButtons": 18
+  },
+  {
+    "panel": "Hồ sơ",
+    "headings": [
+      "Green Exams"
+    ],
+    "inputs": 0,
+    "unlabelled": 0,
+    "visibleButtons": 15
+  }
+]

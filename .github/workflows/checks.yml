@@ -1,0 +1,43 @@
+name: Source checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [backend, frontend, functions]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
+      - run: npm ci
+        working-directory: ${{ matrix.package }}
+      - if: matrix.package == 'backend'
+        run: npm test
+        working-directory: backend
+      - if: matrix.package == 'functions'
+        run: npm run lint
+        working-directory: functions
+      - run: npm audit --omit=dev
+        working-directory: ${{ matrix.package }}
+      - if: matrix.package == 'frontend'
+        run: npm run lint
+        working-directory: frontend
+      - run: npm run build
+        working-directory: ${{ matrix.package }}
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python3 scripts/export-core.py
+      - run: npm ci && npm test && npm run demo
+        working-directory: artifacts/green-exams-core

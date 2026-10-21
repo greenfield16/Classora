@@ -1,0 +1,38 @@
+{
+  "busboy": {
+    "license": "MIT",
+    "evidence": "third-party-licenses/busboy-MIT.txt",
+    "sha256": "d06b5d27bbbbe22c36b1fd88406b1208876e2d37d795f5b8eaed951a459a3111",
+    "source": "backend/node_modules/busboy/LICENSE"
+  },
+  "limiter": {
+    "license": "MIT",
+    "evidence": "third-party-licenses/limiter-MIT.txt",
+    "sha256": "1c81407c9d22573fba1ab7cee0cafc548f813efa69a233347dae970792cb0313",
+    "source": "backend/node_modules/limiter/LICENSE.txt"
+  },
+  "passport-strategy": {
+    "license": "MIT",
+    "evidence": "third-party-licenses/passport-strategy-MIT.txt",
+    "sha256": "ea51ec1545e0705589bafcfc27259c16e5ddccabd6120c8c31b28247277b22c9",
+    "source": "backend/node_modules/passport-strategy/LICENSE"
+  },
+  "pause": {
+    "license": "MIT",
+    "evidence": "third-party-licenses/pause-MIT.txt",
+    "sha256": "0aa29d723615efbc39b6f2e8042023980bfd95f0ff82e7e3dfd0b11d6e22904c",
+    "source": "backend/node_modules/pause/Readme.md"
+  },
+  "png-js": {
+    "license": "MIT",
+    "evidence": "third-party-licenses/png-js-MIT.txt",
+    "sha256": "bdb26a2ec815931ed6a38f3416362566204ee85ecdef96702b636402da4c75c3",
+    "source": "backend/node_modules/png-js/LICENSE"
+  },
+  "streamsearch": {
+    "license": "MIT",
+    "evidence": "third-party-licenses/streamsearch-MIT.txt",
+    "sha256": "d06b5d27bbbbe22c36b1fd88406b1208876e2d37d795f5b8eaed951a459a3111",
+    "source": "backend/node_modules/streamsearch/LICENSE"
+  }
+}
