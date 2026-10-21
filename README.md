@@ -17,7 +17,7 @@ The intended public scope is the **full application**: frontend, backend, Fireba
 - **Assessment interfaces:** public exam entry, timed answering, submission and result screens.
 - **Practice and classroom activities:** flashcard/SRS, matching, quiz and poll interfaces, with different levels of backend integration.
 - **Skill-based exams:** reading, listening/TTS, writing and quiz sections, including browser audio recording and submission code.
-- **Optional AI:** question generation, explanation and analysis through an external compatible worker.
+- **Optional AI:** question generation, explanation and analysis directly through OpenAI (server-side API key only).
 
 **Feature presence is not a completion claim.** Quiz/poll methods in the current Firebase adapter are stubs; camera grading returns a fixed mock result; analytics/PDF adapter paths are incomplete. Public exam submission also has unresolved session/authentication integration. Read the [feature matrix](docs/FEATURE_STATUS.md) before evaluating or deploying a flow.
 

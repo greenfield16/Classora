@@ -16,7 +16,7 @@ Source-reviewed 2026-10-21. “Implemented” below means code exists; it does n
 | Camera/OCR grading | Firebase scanAndGrade returns fixed 8.5/mock student number | Mock; never use its output as an actual assessment result |
 | Question analytics | Firebase adapter returns empty analytics | Placeholder in current UI path |
 | PDF result export | Backend report service, Firebase downloadPdfReport returns null | Incomplete UI integration; report generation not validated end-to-end |
-| AI support | Callable functions and external GreenMind worker protocol | Provider-dependent; worker implementation not included; outputs require teacher review |
+| AI support | Callable functions and direct OpenAI Responses API | Requires server-side OPENAI_API_KEY; outputs require teacher review; live provider calls not yet validated |
 | Entitlements | Licensing guard/service return success | Existing no-op stubs; pricing/payment activation is not established |
 | Full self-hosting | Separate Firebase frontend and MongoDB/JWT backend | Architecture convergence and reproducible full deployment remain roadmap work |
 

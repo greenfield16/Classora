@@ -539,7 +539,7 @@ export class ExamsController {
   }
 
   /**
-   * Get session analytics with GreenMind AI analysis
+   * Get session analytics with OpenAI analysis
    * Used by chatbot to provide smart context & suggestions
    */
   @Get('session/:sessionId/analytics')

@@ -46,3 +46,10 @@
 
 - Removed the unused external SSO integration, provider-specific configuration, callback route and alternative login control before the first public push.
 - Kept email/password authentication; no private environment files or persisted user data were migrated.
+
+
+### Direct OpenAI integration
+
+- Replaced the private AI worker in backend and Firebase Functions with direct OpenAI Responses API calls.
+- AI setup now requires only a server-side `OPENAI_API_KEY`; no worker URL or private gateway is needed.
+- Added text/image transport regression coverage and updated English/Vietnamese setup documentation.

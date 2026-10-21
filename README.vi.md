@@ -17,7 +17,7 @@ Phạm vi dự kiến công khai là **toàn bộ ứng dụng**: frontend, back
 - Giao diện vào thi, trả lời có thời gian, nộp bài và xem kết quả.
 - Giao diện flashcard/SRS, ghép đôi, quiz và bình chọn với mức tích hợp khác nhau.
 - Đề kỹ năng reading, listening/TTS, writing, quiz và mã thu âm/gửi bài qua trình duyệt.
-- AI tùy chọn: sinh câu hỏi, giải thích và phân tích qua worker bên ngoài.
+- AI tùy chọn: sinh câu hỏi, giải thích và phân tích qua OpenAI trực tiếp (chỉ cần API key phía server).
 
 **Có giao diện không đồng nghĩa luồng đã hoàn chỉnh.** Adapter Firebase của quiz/poll đang là stub; chấm camera trả điểm giả cố định; analytics/PDF còn thiếu tích hợp. Nộp bài công khai còn vấn đề session/xác thực. Xem [bảng trạng thái](docs/FEATURE_STATUS.md) trước khi thử hoặc triển khai.
 

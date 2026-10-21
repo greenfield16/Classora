@@ -23,7 +23,7 @@ In a fresh isolated copy, copy `frontend/.env.example` to `frontend/.env.local` 
 
 For build checks use `npm run build`, which selects Webpack. The Firebase shared-app override is required for the current Node 22 client dependency combination; see WARNING-CLEANUP.md. Next uses static export, producing `frontend/out`; `next start` is not the appropriate server for that output. A static host needs the dynamic-path rewrites documented in `firebase.json` (placeholder pages), which require browser smoke testing. Static cache headers are configured in firebase.json because Next static export does not serve headers.
 
-Functions: `cd functions && npm ci && npm run build`. AI depends on an external compatible worker and server-only environment keys; no worker implementation is included. Do not run the existing deploy script during local review. AI/storage are optional for core; their application flows are not claimed to work without providers.
+Functions: `cd functions && npm ci && npm run build`. AI calls OpenAI directly; no private worker is needed. See the OpenAI setup below. Do not run the existing deploy script during local review. AI/storage are optional for core; their application flows are not claimed to work without providers.
 
 ## Before production hosting
 
@@ -32,3 +32,17 @@ Resolve READINESS.md blockers, select one authoritative auth/data architecture, 
 ## Tiếng Việt
 
 Core là đường chạy độc lập có thể tái lập. Backend chỉ chạy thử trong thư mục mới với MongoDB local và biến môi trường tự tạo; không seed vào DB hiện có. Giao diện hiện dùng Firebase, không dùng JWT backend cho đăng nhập thông thường. Chưa có quy trình triển khai toàn app hoàn chỉnh/an toàn production; cần sửa các blocker trước khi sử dụng dữ liệu học viên thật.
+
+
+## Optional OpenAI setup / Cấu hình AI
+
+Only `OPENAI_API_KEY` is required for AI. The server uses `gpt-4.1-mini` for text and image input through the Responses API. No custom URL or private worker is required.
+
+- NestJS: add your key to `backend/.env` as `OPENAI_API_KEY=...`, then restart the backend.
+- Firebase (the current frontend AI path): run `firebase functions:secrets:set OPENAI_API_KEY` for your own project, enter the key at the prompt, then deploy the `examAi` function. Setting only the NestJS environment does not configure Firebase.
+- Firebase emulation: add `OPENAI_API_KEY=...` to `functions/.secret.local`; this file is ignored by Git.
+- Never use `NEXT_PUBLIC_OPENAI_API_KEY`, browser storage, or a committed file. The UI has no API-key entry form.
+
+Câu hỏi, thông tin phiên thi và ảnh OMR được gửi tới OpenAI khi dùng tính năng tương ứng. Review dữ liệu trước khi sử dụng với học sinh thật. Calls request `store: false`; provider retention policies still apply. API usage requires an API account with billing/credits and model access. Missing keys preserve existing fallback messages where supported; generation and OMR require a working provider.
+
+Protocol reference: https://developers.openai.com/api/docs/guides/text and https://developers.openai.com/api/docs/guides/images-vision. Automated checks mock the provider; they do not verify live credentials or educational accuracy.

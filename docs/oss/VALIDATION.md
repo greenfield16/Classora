@@ -35,3 +35,10 @@ After the owner identified Joseph. MD and selected Apache-2.0 for review/applica
 ## Initial-publication integration removal
 
 The requested external SSO provider, callback route/hosting rewrite and example variables were removed before initial publication. Existing private environment files/database records remain untouched. Email/password behavior was verified by the regression suite: 10/10 backend tests, including the new successful-active-login case. Backend build passed. Frontend lint passed; the final static build no longer includes the retired callback route (14 generated pages expected). Generated development type-cache references to the removed page were discarded before rebuilding; no source workaround was added.
+
+
+### Direct OpenAI migration (2026-10-21)
+
+Removed the private AI worker protocol from both server runtimes. AI now uses OpenAI Responses with a fixed `gpt-4.1-mini` default, server-only `OPENAI_API_KEY`, text/image input, JSON mode where requested, a request timeout and `store: false`. Firebase binds the new secret. The browser API contract is unchanged.
+
+Backend tests: 11/11 pass, including mocked text/image transport, missing key, HTTP authentication error, incomplete response and refusal handling; adapter parity is asserted between backend and Functions. Backend and Functions compile. No live OpenAI request was made; credentials, provider access and educational output quality remain unverified. Frontend source did not change.

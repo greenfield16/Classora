@@ -1,3 +1,4 @@
+import { callOpenAI } from './openai'
 // functions/src/index.ts
 import * as functions from 'firebase-functions/v1'
 import { initializeApp } from 'firebase-admin/app'
@@ -13,76 +14,6 @@ type ExamAiTask =
   | 'analyzeQuizSession'
   | 'analyzePollSession'
   | 'detectCheating'
-
-function pickWorkerText(data: any): string {
-  const content = data?.choices?.[0]?.message?.content
-  if (typeof content === 'string') return content.trim()
-  if (Array.isArray(content)) {
-    return content.map((part: any) => part?.text || '').join('').trim()
-  }
-
-  return String(
-    data?.text
-    || data?.response
-    || data?.output
-    || data?.data?.text
-    || data?.result?.text
-    || (typeof data?.result === 'string' ? data.result : '')
-    || data?.candidates?.[0]?.content?.parts?.[0]?.text
-    || '',
-  ).trim()
-}
-
-async function callGreenMindWorker(
-  task: ExamAiTask,
-  payload: any,
-  prompt: string,
-  responseJson = false,
-  maxTokens = 2048,
-): Promise<{ data: any; text: string; model: string }> {
-  const url = String(process.env.GREENMIND_URL || '').trim().replace(/\/$/, '')
-  const apiKey = String(process.env.GREENMIND_API_KEY || process.env.GREEN_EXAMS_API_KEY || '').trim()
-  if (!url) throw new Error('GREENMIND_URL is not configured.')
-  if (!apiKey) throw new Error('GREENMIND_API_KEY is not configured.')
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'x-api-key': apiKey,
-  }
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      task,
-      payload,
-      prompt,
-      responseJson,
-      maxTokens,
-      temperature: 0.35,
-      source: 'greenfield-exams',
-    }),
-  })
-
-  const raw = await res.text()
-  let data: any
-  try {
-    data = raw ? JSON.parse(raw) : {}
-  } catch {
-    data = { text: raw }
-  }
-
-  if (!res.ok) {
-    const message = data?.error?.message || data?.message || raw || res.statusText
-    throw new Error(`GreenMind Worker HTTP ${res.status}: ${String(message).slice(0, 300)}`)
-  }
-
-  return {
-    data,
-    text: pickWorkerText(data),
-    model: String(data?.model || data?.meta?.model || 'greenmind-worker'),
-  }
-}
 
 function jsonFromText(text: string): any {
   try {
@@ -303,7 +234,7 @@ export const gradeExam = functions.region('asia-southeast1').https.onCall(async 
 })
 
 export const examAi = functions
-  .runWith({ secrets: ['GREENMIND_API_KEY'] })
+  .runWith({ secrets: ['OPENAI_API_KEY'] })
   .region('asia-southeast1')
   .https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -327,31 +258,20 @@ export const examAi = functions
 
   try {
     const request = buildAiPrompt(task, payload)
-    const result = await callGreenMindWorker(task, payload, request.prompt, request.responseJson, request.maxTokens)
+    const result = await callOpenAI({ prompt: request.prompt, responseJson: request.responseJson, maxTokens: request.maxTokens })
 
     if (task === 'generateQuestions' || task === 'parseQuestions') {
-      const parsed = Array.isArray(result.data?.questions)
-        ? result.data
-        : result.data?.result && Array.isArray(result.data.result.questions)
-          ? result.data.result
-          : jsonFromText(result.text)
+      const parsed = jsonFromText(result.text)
       const questions = Array.isArray(parsed) ? parsed : parsed.questions || []
       return { ok: true, questions, count: questions.length, model: result.model }
     }
-
     if (task === 'explainAnswer') {
-      const parsed = result.data?.explanation
-        ? result.data
-        : result.data?.result?.explanation
-          ? result.data.result
-          : jsonFromText(result.text)
+      const parsed = jsonFromText(result.text)
       return { ok: true, explanation: String(parsed.explanation || result.text), model: result.model }
     }
-
-    const analysis = result.data?.analysis || result.data?.result?.analysis || result.text
-    return { ok: true, analysis: String(analysis || ''), model: result.model }
+    return { ok: true, analysis: result.text, model: result.model }
   } catch (err: any) {
-    console.error('[examAi] GreenMind Worker failed:', err.message)
-    throw new functions.https.HttpsError('internal', err.message || 'GreenMind AI failed.')
+    console.error('[examAi] OpenAI failed:', err.message)
+    throw new functions.https.HttpsError('internal', err.message || 'OpenAI failed.')
   }
   })

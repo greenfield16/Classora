@@ -10,7 +10,7 @@ The application remains a development preview with unresolved integration and se
 |---|---|---|
 | Frontend | Next 16 static export; admin, exam entry, quiz/poll, skills routes | Firebase Auth + Firestore/callables are required for principal flows |
 | NestJS | MongoDB connection named mgmt; password JWT auth, exam/storage modules, PDF service | Separate API, not a drop-in UI persistence replacement |
-| Firebase Functions | Callable exam/AI workflows | Requires Firebase project and external AI worker for AI |
+| Firebase Functions | Callable exam/AI workflows | Requires Firebase project and server-only OPENAI_API_KEY for AI |
 | DOCX | Backend ZIP/XML paragraph parser; separate browser implementation | Core tests cover backend only; table/image/formula fidelity incomplete |
 | Grading | Online/sheet backend paths share extracted true/false helper | Full grading, idempotency, timing and ownership integration tests remain |
 | Licensing | Guard returns true; service returns valid/ok | Existing no-op stubs, unchanged; no enforcement claim |

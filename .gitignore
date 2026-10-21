@@ -41,3 +41,6 @@ __pycache__/
 # Generated framework/function outputs
 frontend/next-env.d.ts
 functions/lib/
+
+# Firebase emulator secrets
+.secret.local

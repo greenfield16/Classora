@@ -39,7 +39,7 @@ export interface UnifiedPromptInput {
 // COMPANY_NAME, COMPANY_PHONE, COMPANY_EMAIL, COMPANY_ADDRESS, COMPANY_OFFICE_AREA
 // Hãy đặt đúng các biến này trong file .env để AI dùng thông tin thật!
 export const DEFAULT_COMPANY_PROMPT_CONTEXT: CompanyPromptContext = {
-  companyName: 'Greenfield',
+  companyName: 'Classora',
   officeArea: 'TP.HCM',
   phone: '',
   email: '',

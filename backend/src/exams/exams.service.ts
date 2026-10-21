@@ -1238,7 +1238,7 @@ export class ExamsService {
       await this.licensingService.consumeAiQuota(organizationId, 1)
     }
 
-    // Dùng GreenMind AI để trích xuất SBD, mã đề, đáp án
+    // Dùng OpenAI để trích xuất SBD, mã đề, đáp án
     const ocrData = await this.aiSvc.extractAnswersFromImage(base64Image, mimeType)
 
     const sbd = ocrData.sbd
@@ -1602,7 +1602,7 @@ export class ExamsService {
       ],
     })
 
-    // Analyze session with GreenMind AI
+    // Analyze session with OpenAI
     try {
       const exam = await this.examModel.findById(dto.examId).lean()
       if (exam?.organizationId) {
@@ -1628,7 +1628,7 @@ export class ExamsService {
         analyzedAt: new Date(),
       })
     } catch (err) {
-      console.error('[ExamsService] GreenMind AI analysis failed:', err)
+      console.error('[ExamsService] OpenAI analysis failed:', err)
     }
 
     return sessionLog
@@ -1677,7 +1677,7 @@ export class ExamsService {
         sessionLog.analyzedAt = new Date()
         await sessionLog.save()
       } catch (err) {
-        console.error('[ExamsService] GreenMind AI analysis failed:', err)
+        console.error('[ExamsService] OpenAI analysis failed:', err)
       }
     }
 

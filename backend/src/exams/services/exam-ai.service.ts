@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { callGreenMind } from '../../common/greenmind-ai'
+import { callOpenAI } from '../../common/openai'
 import { buildUnifiedPrompt, resolveCompanyPromptContext } from '../../ai/prompt-builder'
 
 @Injectable()
@@ -21,8 +21,8 @@ export class ExamAiService {
     strengthAreas: string[]
     improvementAreas: string[]
   }> {
-    if (!process.env.GREENMIND_URL) {
-      console.warn('[Exam AI] Missing GreenMind Worker URL, returning default analysis')
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn('[Exam AI] Missing OpenAI API key, returning default analysis')
       return this.getDefaultAnalysis(sessionData)
     }
 
@@ -49,12 +49,10 @@ export class ExamAiService {
     const analysisPrompt = [analysisPack.system, analysisPack.prompt].filter(Boolean).join('\n\n')
 
     try {
-      const result = await callGreenMind({
-        task: 'analyzeExamSession',
+      const result = await callOpenAI({
         prompt: analysisPrompt,
         maxTokens: 1024,
         temperature: 0.7,
-        label: '[Exam Analysis]',
       })
 
       const jsonMatch = result.text.match(/\{[\s\S]*\}/)
@@ -78,7 +76,7 @@ export class ExamAiService {
     timeLeftSeconds: number
     riskLevel: 'low' | 'medium' | 'high'
   }): Promise<string> {
-    if (!process.env.GREENMIND_URL) {
+    if (!process.env.OPENAI_API_KEY) {
       return this.getDefaultChatContext(sessionData)
     }
 
@@ -100,12 +98,10 @@ export class ExamAiService {
     const contextPrompt = [contextPack.system, contextPack.prompt].filter(Boolean).join('\n\n')
 
     try {
-      const result = await callGreenMind({
-        task: 'generateExamChatContext',
+      const result = await callOpenAI({
         prompt: contextPrompt,
         maxTokens: 256,
         temperature: 0.8,
-        label: '[Exam Chat Context]',
       })
 
       return result.text.trim()
@@ -127,7 +123,7 @@ export class ExamAiService {
     subject?: string
     chapter?: string
   }>): Promise<Record<string, { explanation: string; tip?: string }>> {
-    if (!process.env.GREENMIND_URL || questions.length === 0) {
+    if (!process.env.OPENAI_API_KEY || questions.length === 0) {
       return this.getDefaultExplanations(questions)
     }
 
@@ -172,12 +168,10 @@ export class ExamAiService {
     const prompt = [explainPack.system, explainPack.prompt].filter(Boolean).join('\n\n')
 
     try {
-      const result = await callGreenMind({
-        task: 'explainAnswers',
+      const result = await callOpenAI({
         prompt,
         maxTokens: 3000,
         temperature: 0.4,
-        label: '[Answer Explanation]',
       })
 
       const jsonMatch = result.text.match(/\{[\s\S]*\}/)
@@ -242,8 +236,8 @@ export class ExamAiService {
   }
 
   async extractAnswersFromImage(base64Image: string, mimeType: string = 'image/jpeg'): Promise<any> {
-    if (!process.env.GREENMIND_URL) {
-      throw new Error('GreenMind Worker config missing')
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured')
     }
 
     const omrPack = buildUnifiedPrompt({
@@ -266,13 +260,11 @@ export class ExamAiService {
     })
     const prompt = [omrPack.system, omrPack.prompt].filter(Boolean).join('\n\n')
     try {
-      const result = await callGreenMind({
-        task: 'extractAnswersFromImage',
+      const result = await callOpenAI({
         prompt,
         imagesBase64: [{ mimeType, data: base64Image }],
         maxTokens: 2048,
         temperature: 0.1,
-        label: '[Scan OMR Sheet]',
       })
 
       const jsonMatch = result.text.match(/\{[\s\S]*\}/)
