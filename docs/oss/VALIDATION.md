@@ -58,3 +58,5 @@ The current frontend persistence/auth/AI path is NestJS + MongoDB + JWT, replaci
 Database/account/index migration and separate local recording-file backups are documented in `docs/DATABASE.md` and `docs/SELF_HOSTING.md`. Remaining deployment, timing, privacy, retention and abuse-control work is explicit; successful integration is not production certification.
 
 Clean-source follow-up: backend tests/build and the MongoDB integration passed again with freshly installed dependencies and no private environment files; frontend zero-warning lint/static build passed too. Both production dependency audits report zero vulnerabilities. Earlier GitHub failures were missing optional peer metadata in lockfiles; the repaired locks now pass fresh `npm ci`.
+
+GitHub CI follow-up: npm 10.9.9 (bundled with the runner Node 22) required additional optional peer entries that npm 11 did not retain. Regenerated both lockfiles with npm 10.9.9; clean installs now pass with that exact version. No existing locked dependency version was upgraded.
