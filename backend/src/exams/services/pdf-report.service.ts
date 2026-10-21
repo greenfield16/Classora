@@ -26,13 +26,14 @@ export class PdfReportService {
   private printer: any
 
   constructor() {
-    // Fonts mặc định của pdfmake (bundled Roboto)
+    const vfs = require('pdfmake/build/vfs_fonts')
+    const font = (name: string) => Buffer.from(vfs[name], 'base64')
     const fonts = {
       Roboto: {
-        normal: 'node_modules/pdfmake/build/vfs_fonts.js',
-        bold: 'node_modules/pdfmake/build/vfs_fonts.js',
-        italics: 'node_modules/pdfmake/build/vfs_fonts.js',
-        bolditalics: 'node_modules/pdfmake/build/vfs_fonts.js',
+        normal: font('Roboto-Regular.ttf'),
+        bold: font('Roboto-Medium.ttf'),
+        italics: font('Roboto-Italic.ttf'),
+        bolditalics: font('Roboto-MediumItalic.ttf'),
       },
     }
     this.printer = new PdfPrinter(fonts)
@@ -124,7 +125,7 @@ export class PdfReportService {
       header: {
         margin: [30, 15, 30, 0],
         columns: [
-          { text: 'GREENFIELD EXAMS', fontSize: 8, color: '#6B7280' },
+          { text: 'Classora', fontSize: 8, color: '#6B7280' },
           { text: `Xuất ngày: ${formatDate(exportedAt)}`, fontSize: 8, color: '#6B7280', alignment: 'right' },
         ],
       },
@@ -280,16 +281,6 @@ export class PdfReportService {
 
     return new Promise((resolve, reject) => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const vfsFonts = require('pdfmake/build/vfs_fonts')
-        this.printer = new PdfPrinter({
-          Roboto: {
-            normal: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Regular.ttf'], 'base64'),
-            bold: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Medium.ttf'], 'base64'),
-            italics: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-Italic.ttf'], 'base64'),
-            bolditalics: Buffer.from(vfsFonts.pdfMake.vfs['Roboto-MediumItalic.ttf'], 'base64'),
-          },
-        })
         const doc = this.printer.createPdfKitDocument(docDef)
         const chunks: Buffer[] = []
         doc.on('data', (chunk: Buffer) => chunks.push(chunk))

@@ -17,7 +17,7 @@ const {LicenseGuard}=require('../src/licensing/license.guard');
 
 test('Nest HTTP adapter preserves authentication, DTO validation and exam route behavior',async()=>{
   const config=new ConfigService({JWT_SECRET:'synthetic-http-test-only'});
-  const identity={_id:'synthetic-teacher',isActive:true,organizationId:'synthetic-school'};
+  const identity={_id:'synthetic-teacher',role:'ADMIN',isActive:true,organizationId:'synthetic-school'};
   const subjects=[{_id:'synthetic-subject',name:'Synthetic mathematics'}];
   const svc={
     getSubjects:async(org)=>{assert.equal(org,identity.organizationId);return subjects;},

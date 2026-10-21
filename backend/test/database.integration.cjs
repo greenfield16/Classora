@@ -1,0 +1,152 @@
+require('reflect-metadata');
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const {randomUUID} = require('node:crypto');
+const {mkdtemp,rm} = require('node:fs/promises');
+const {tmpdir} = require('node:os');
+const {join} = require('node:path');
+
+test('MongoDB HTTP workflows: identity, tenant isolation, real grading, quiz/poll, skills and media', {skip:!process.env.TEST_MONGODB_URI}, async () => {
+  // Only a newly named database on an explicitly selected local test server is used.
+  const uri=process.env.TEST_MONGODB_URI;
+  assert.match(uri,/^mongodb:\/\/(127\.0\.0\.1|localhost):\d+\/?$/);
+  const dbName='classora_integration_'+randomUUID().replaceAll('-','');
+  for(const key of ['MONGO_URI_MGMT','MONGODB_URI_MGMT','MONGODB_URI']) process.env[key]=uri;
+  for(const key of ['MONGODB_DB_MGMT','MONGODB_DB']) process.env[key]=dbName;
+  process.env.JWT_SECRET='synthetic-integration-key-no-production-access';
+  process.env.OPENAI_API_KEY='';
+  process.env.UPLOAD_DIR=await mkdtemp(join(tmpdir(),'classora-media-test-'));
+  const {NestFactory}=require('@nestjs/core');
+  const {ValidationPipe}=require('@nestjs/common');
+  const {getConnectionToken}=require('@nestjs/mongoose');
+  const {AppModule}=require('../src/app.module');
+  let app,db;
+  try {
+    app=await NestFactory.create(AppModule,{logger:['error']});
+    app.useGlobalPipes(new ValidationPipe({whitelist:true,transform:true}));
+    await app.listen(0,'127.0.0.1');
+    db=app.get(getConnectionToken('mgmt'));
+    await Promise.all(Object.values(db.models).map(m=>m.init()));
+    const bcrypt=require('bcryptjs');
+    const password='synthetic-test-password';
+    const users=[];
+    for(const n of [1,2]) users.push(await db.model('User').create({email:`teacher${n}@example.invalid`,name:`Teacher ${n}`,password:await bcrypt.hash(password,4),role:'TEACHER',isActive:true}));
+    const student=await db.model('User').create({email:'student@example.invalid',name:'Student',password:await bcrypt.hash(password,4),role:'STUDENT',isActive:true});
+    const base=await app.getUrl();
+    const call=async(path,{token,method='GET',body,headers={},status=200,form}={})=>{
+      const res=await fetch(base+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:`Bearer ${token}`} : {}),...headers},body:form || (body?JSON.stringify(body):undefined)});
+      const raw=await res.text();assert.equal(res.status,status,`${method} ${path}: ${raw.slice(0,300)}`);
+      return raw && res.headers.get('content-type')?.includes('json')?JSON.parse(raw):raw;
+    };
+    const login=async(email,p=password)=>(await call('/auth/login',{method:'POST',body:{email,password:p}})).access_token;
+    const a=await login(users[0].email),b=await login(users[1].email),s=await login(student.email);
+    await call('/exams/subjects',{status:401});
+    await call('/exams/subjects',{token:s,status:403});
+    assert.equal((await call('/auth/me',{token:a})).role,'TEACHER');
+    await db.collection('exam_subjects').insertOne({name:'Unscoped legacy',code:'LEGACY',isActive:true});
+    const subject=await call('/exams/subjects',{token:a,method:'POST',body:{name:'Synthetic Math',code:'MATH'},status:201});
+    const subjectB=await call('/exams/subjects',{token:b,method:'POST',body:{name:'Separate Math',code:'MATH'},status:201});
+    assert.notEqual(subject._id,subjectB._id);
+    assert.equal((await call('/exams/subjects',{token:b})).length,1);
+    await call(`/exams/subjects/${subject._id}`,{token:b,method:'PATCH',body:{name:'forbidden'},status:404});
+    // Inputs cannot change a document's owner or introduce update operators.
+    await call(`/exams/subjects/${subject._id}`,{token:a,method:'PATCH',body:{name:'Math',organizationId:String(users[1]._id),$set:{organizationId:String(users[1]._id)}}});
+    assert.equal((await call('/exams/subjects',{token:a})).length,1);
+    const q=await call('/exams/questions',{token:a,method:'POST',body:{subjectId:subject._id,gradeLevel:12,type:'MULTIPLE_CHOICE',content:'Synthetic 1+1?',difficulty:'NHAN_BIET',options:[{key:'A',content:'2'},{key:'B',content:'3'}],correctAnswer:'A'},status:201});
+    await call('/exams/questions',{token:b,method:'POST',body:{subjectId:subject._id,gradeLevel:12,type:'SHORT_ANSWER',content:'foreign ref',difficulty:'NHAN_BIET'},status:400});
+    assert.equal((await call('/exams/questions',{token:b})).total,0);
+    const exam=await call('/exams',{token:a,method:'POST',body:{title:'Synthetic exam',subjectId:subject._id,gradeLevel:12,timeLimit:60,variantCount:1,part1Questions:[q._id],structure:{part1Count:1,part2Count:0,part3Count:0}},status:201});
+    const pub=await call(`/exams/${exam._id}/publish`,{token:a,method:'POST',status:201});
+    await call(`/exams/${exam._id}`,{token:b,status:404});
+    const publicExam=await call(`/exams/public/${pub.accessCode}`);
+    assert.equal(publicExam.title,'Synthetic exam');assert.equal(publicExam.answerKey,undefined);
+    const session=await call(`/exams/public/${pub.accessCode}/start`,{method:'POST',body:{fullName:'Synthetic Student',className:'12A',school:'Test School'},status:201});
+    assert.match(session.sessionToken,/^[\w-]{40,}$/);
+    assert.equal(session.questions.part1[0].correctAnswer,undefined);
+    const answers={part1:{[q._id]:'A'},part2:{},part3:{}};
+    await call(`/exams/sessions/${session.sessionId}/submit`,{method:'POST',body:answers,status:401});
+    const result=await call(`/exams/sessions/${session.sessionId}/submit`,{method:'POST',body:answers,headers:{'X-Exam-Token':session.sessionToken},status:201});
+    assert.equal(result.score,0.25);
+    await call(`/exams/sessions/${session.sessionId}/submit`,{method:'POST',body:answers,headers:{'X-Exam-Token':session.sessionToken},status:400});
+    assert.equal((await call(`/exams/${exam._id}/results`,{token:a})).total,1);
+    assert.equal((await call(`/exams/${exam._id}/results`,{token:b})).total,0);
+    assert.equal((await call('/exams/students',{token:a})).total,1);
+    const foreignStudents=await call('/exams/students',{token:b});assert.equal(foreignStudents.total,0);assert.deepEqual(foreignStudents.filterOptions.schools,[]);
+    assert.equal((await call('/exams/results/report',{token:a})).totalResults,1);
+    assert.equal((await call('/exams/results/report',{token:b})).totalResults,0);
+    await call('/profile',{token:a,method:'PUT',body:{fullName:'Teacher A',workplaces:['School'],defaultWorkplace:'School',gradeLevels:[12],ownerId:String(users[1]._id)}});
+    assert.equal((await call('/profile',{token:a})).fullName,'Teacher A');
+    assert.equal((await call('/profile',{token:b})).fullName,'Teacher 2');
+    await call('/feedback',{token:a,method:'POST',body:{title:'Test',message:'Synthetic feedback',type:'BUG'},status:201});
+    assert.equal(await db.collection('teacher_feedback').countDocuments({ownerId:users[0]._id}),1);
+    const emptyCards=await call('/exams/flashcards/sets',{token:a,method:'POST',body:{title:'New empty set',cards:[]},status:201});assert.equal(emptyCards.cards.length,0);
+    assert.equal((await call(`/exams/${exam._id}/analytics/questions`,{token:a})).examId,exam._id);
+    assert.ok((await call(`/exams/${exam._id}/report/pdf`,{token:a})).startsWith('%PDF-'));
+    await call(`/exams/${exam._id}/report/pdf`,{token:b,status:404});
+    const cards=await call('/exams/flashcards/sets',{token:a,method:'POST',body:{title:'Cards',cards:[{front:'front',back:'back',imageUrl:'https://example.invalid/image.png'}],matchingItems:[{prompt:'A',correct:'B'}]},status:201});
+    await call(`/exams/flashcards/sets/${cards._id}`,{token:a,method:'PATCH',body:{title:'Updated cards'}});
+    assert.equal((await call('/exams/flashcards/sets',{token:b})).length,0);
+    const publicCards=await call(`/exams/flashcards/public/${cards.accessCode}`);
+    assert.equal(publicCards.title,'Updated cards');assert.equal(publicCards.matchingItems.length,1);
+    const quiz=await call('/exams/quiz/sets',{token:a,method:'POST',body:{title:'Quiz',questions:[{prompt:'1+1',choices:[{text:'2'},{text:'3'}],correctIndex:0,durationSeconds:30}]},status:201});
+    const room=await call('/exams/quiz/sessions/start',{token:a,method:'POST',body:{setId:quiz._id},status:201});
+    assert.ok(room.session.code);
+    await call(`/exams/quiz/sessions/${room.session._id}/begin`,{token:a,method:'POST',status:201});
+    const participant=await call(`/exams/quiz/public/${room.session.code}/join`,{method:'POST',body:{name:'Synthetic Player'},status:201});assert.ok(participant.participantId);
+    const poll=await call('/exams/poll/sets',{token:a,method:'POST',body:{title:'Poll',questions:[{prompt:'Choice?',type:'SINGLE_CHOICE',options:[{text:'A'},{text:'B'}]}]},status:201});
+    const pollRoom=await call('/exams/poll/sessions/start',{token:a,method:'POST',body:{setId:poll._id},status:201});assert.ok(pollRoom.session.code);
+    const template=await call('/skill-exams',{token:a,method:'POST',body:{title:'Skills',subject:'English',gradeLevel:12,durationMinutes:30,instructions:'Test',sections:[{id:'s',skill:'QUIZ',title:'Quiz',instructions:'',questions:[{id:'q',prompt:'Test?',points:1,options:['A','B'],correctOption:1,requiresRecording:true}]}]},status:201});
+    await call(`/skill-exams/public/${template.accessCode}`,{status:404});
+    await call(`/skill-exams/${template.id}`,{token:b,status:404});
+    await call(`/skill-exams/${template.id}`,{token:a,method:'PATCH',body:{status:'PUBLISHED',ownerId:String(users[1]._id)}});
+    const skill=await call(`/skill-exams/public/${template.accessCode}`);assert.equal(skill.sections[0].questions[0].correctOption,undefined);
+    const file=new FormData();file.append('questionId','q');file.append('file',new Blob(['synthetic-audio'],{type:'audio/webm'}),'test.webm');
+    const recording=await call(`/skill-exams/public/templates/${template.id}/recordings`,{method:'POST',form:file,status:201});
+    assert.equal(await call(recording.url),'synthetic-audio');
+    const submission=await call(`/skill-exams/public/${template.accessCode}/submit`,{method:'POST',body:{ownerId:String(users[1]._id),student:{fullName:'Student',className:'12A'},answers:{q:1,extra:'ignore'},recordings:{q:{url:base+recording.url,durationSeconds:1}}},status:201});assert.ok(submission.id);
+    const submissions=await call(`/skill-exams/${template.id}/submissions`,{token:a});assert.equal(submissions.length,1);assert.equal(submissions[0].ownerId,String(users[0]._id));assert.equal(submissions[0].answers.extra,undefined);
+    await call(`/skill-exams/${template.id}/submissions`,{token:b,status:404});
+    await call('/ai',{token:a,method:'POST',body:{task:'not-allowed',payload:{}},status:400});
+    await call('/ai',{token:a,method:'POST',body:{task:'generateQuestions',payload:{count:1,topic:'test'}},status:503});
+    await call('/auth/password',{token:a,method:'POST',body:{oldPassword:password,newPassword:'synthetic-new-password'},status:201});
+    await call('/auth/login',{method:'POST',body:{email:users[0].email,password},status:401});
+    assert.ok(await login(users[0].email,'synthetic-new-password'));
+    // A fresh HTTP read proves records came from MongoDB, not a browser cache.
+    assert.equal(await db.collection('exam_sessions').countDocuments({status:'SUBMITTED'}),1);
+    // Execute the actual frontend TypeScript adapters over HTTP, without a browser or mocked server.
+    const ts=require('typescript'),fs=require('node:fs'),path=require('node:path');
+    const modules=new Map();let frontendToken=a;
+    process.env.NEXT_PUBLIC_API_URL=base;
+    const load=(name)=>{
+      if(name==='store') return {useAuthStore:{getState:()=>({token:frontendToken,logout:()=>{frontendToken=null;}})}};
+      if(modules.has(name)) return modules.get(name).exports;
+      const module={exports:{}};modules.set(name,module);
+      const source=fs.readFileSync(path.resolve('../frontend/src/lib',name+'.ts'),'utf8');
+      const code=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2021}}).outputText;
+      new Function('require','module','exports',code)((p)=>load(p.replace('./','')),module,module.exports);
+      return module.exports;
+    };
+    const previousStorage=global.sessionStorage;
+    const memory=new Map();global.sessionStorage={getItem:k=>memory.get(k)||null,setItem:(k,v)=>memory.set(k,String(v))};
+    try {
+      const client=load('api');
+      assert.ok((await client.auth.login(users[0].email,'synthetic-new-password')).access_token);
+      assert.equal((await client.exams.getSubjects(a)).length,1);
+      assert.equal((await client.exams.getExams(a,{})).total,1);
+      const clientSession=await client.exams.startSession(pub.accessCode,{fullName:'Frontend Adapter Student',className:'12B'});
+      assert.equal((await client.exams.submitSession(clientSession.sessionId,answers)).score,0.25);
+      assert.equal((await client.exams.getResults(a,exam._id)).total,2);
+      assert.equal((await client.profiles.getCurrent()).fullName,'Teacher A');
+      const pdf=await client.exams.downloadPdfReport(a,exam._id);assert.equal(pdf.headers.get('content-type'),'application/pdf');
+      const skills=load('skill-exams').skillExams;
+      assert.equal((await skills.listMine()).length,1);
+      assert.equal((await skills.getPublic(template.accessCode)).id,template.id);
+      assert.ok(await skills.submit({templateId:template.id,accessCode:template.accessCode,ownerId:String(users[0]._id),student:{fullName:'Adapter Student',className:'12B',email:''},answers:{q:0},recordings:{}}));
+    } finally { if(previousStorage===undefined) delete global.sessionStorage;else global.sessionStorage=previousStorage; }
+
+  } finally {
+    if(db && /^classora_integration_[a-f0-9]+$/.test(db.name)) await db.dropDatabase();
+    if(app) await app.close();
+    await rm(process.env.UPLOAD_DIR,{recursive:true,force:true});
+  }
+});

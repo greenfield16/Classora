@@ -27,4 +27,4 @@ export class Subject {
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject)
 SubjectSchema.index({ organizationId: 1 })
-SubjectSchema.index({ code: 1 }, { unique: true })
+SubjectSchema.index({ organizationId: 1, code: 1 }, { unique: true })

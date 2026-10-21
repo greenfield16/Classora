@@ -1,48 +1,54 @@
-# Local setup and self-hosting status
+# Setup and self-hosting
 
-## Supported independent candidate
+Classora now uses one persistence path: **Next.js → NestJS → MongoDB**. Login uses MongoDB users and backend JWTs. AI calls OpenAI from NestJS. Firebase/Firestore/Functions are not required and their runtime code/configuration has been removed.
 
-Use Node 22 (`.nvmrc`) and npm (lockfile v3), Python 3 for export. Run the core commands in the root README. That path is database-free and the intended first release scope. It includes source, types, meaningful tests and a deterministic scoring demo. No service starts and no data is transmitted by the tests/demo. `npm ci` fetches dependencies from the npm registry.
+Use Node 22 and a fresh clone for evaluation. The development stack has not been certified for production or real student records.
 
-## Isolated NestJS backend development
+## Local setup
 
-Use a fresh copy of the review source in a new directory to avoid existing `.env` files. The existing workspace contains local environment files; do not overwrite or reuse them for a demo. Node 22 is the target runtime; local validation results disclose the actual runtime used.
+1. Start a dedicated local MongoDB, for example `docker compose -f docker-compose.local.yml up -d` (listens only on 127.0.0.1:27017).
+2. Copy `backend/.env.example` to `backend/.env`. Set `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET` (e.g. generate with `openssl rand -hex 32`), `ADMIN_EMAIL`, and a unique `ADMIN_PASSWORD` of at least 16 characters. The sample database is `classora_local`.
+3. In `backend/`: `npm ci`, `npm test`, `npm run build`, `npm run seed`, then `npm run start:prod`. Seed reads only `backend/.env` and creates the administrator if absent; it does not reset existing passwords.
+4. Copy `frontend/.env.example` to `frontend/.env.local`. Set `NEXT_PUBLIC_API_URL=http://localhost:3001`.
+5. In `frontend/`: `npm ci`, `npm run lint`, `npm run dev`. Open `http://localhost:3000`, sign in with the administrator credentials and create a subject/question/exam.
 
-1. Start Docker and run `docker compose -f docker-compose.local.yml up -d mongo`. This exposes a new MongoDB 7 instance only on 127.0.0.1:27017 and uses a dedicated named volume. If this port is already in use, select a different host port and update your new configuration. Never point at a production database.
-2. In the fresh copy: `cp backend/.env.example backend/.env`. Set a random JWT_SECRET (e.g. output of `openssl rand -hex 32`), ADMIN_EMAIL and an independently generated ADMIN_PASSWORD of at least 16 characters. Keep MONGODB_DB=green_exams_local and local MongoDB URI. Do not copy the root `.env`; the seed script also reads it, so the fresh root must have no `.env`.
-3. Run `cd backend`, `npm ci`, `npm test`, `npm run build`, `npm run seed`, then `npm run start:prod`. Seed creates an administrator only if absent; it does not reset an existing password. Seed was not run against any existing database during readiness work.
-4. POST JSON `{ "email": "your configured address", "password": "your configured password" }` to `http://localhost:3001/auth/login`. Use the returned bearer token for `GET /exams/subjects`. Avoid pasting credentials or tokens into public logs.
+No Firebase project, Firebase browser variables, separate callable function deployment or private AI worker is needed. Old Firebase browser sessions are deliberately not reused; sign in again with a MongoDB account.
 
-This path tests a backend API, not Firebase frontend authentication. MongoDB startup, seed and database integration still need an isolated smoke run on a machine with the required image/runtime. Do not use the old `docker-compose.yml` as a production deployment definition: it reads the existing root environment and has development mounts. Dockerfile.dev now uses Node 22/npm ci and no longer invokes nonexistent Prisma generation.
+## Docker development stack
 
-## Firebase frontend development — incomplete self-hosting path
+After configuring `backend/.env`, run `docker compose up --build`. MongoDB is internal to the development network; frontend/backend ports bind to localhost. In another terminal run `docker compose exec backend npm run seed`, then open localhost:3000. This is a development definition with watch mode and source mounts, not a production deployment. The Docker stack was source-reviewed; local integration tests used an isolated native MongoDB process rather than Docker.
 
-The UI's `exams` export delegates to `firebase-api.ts`. Authentication uses Firebase; major data flows bypass NestJS. A new development Firebase project needs Email/Password Auth, Firestore, Storage, Functions and appropriate hosting. Provisioning, billing eligibility, teacher authorization, custom claims and rule deployment are not automated here. They must be validated before any real-user deployment.
+The standalone `docker-compose.local.yml` is an alternative MongoDB-only service for running Node processes on the host. It uses a separate named volume.
 
-In a fresh isolated copy, copy `frontend/.env.example` to `frontend/.env.local` and fill **every** Firebase identifier from your own development project, then `cd frontend && npm ci && npm run dev`. Unconfigured builds now use inert `demo-classora` identifiers rather than the old project identifiers. These placeholders allow static compilation only; configure every value for your own Firebase project before testing data/auth flows. No emulator connection is configured automatically. Do not deploy existing Firestore/Storage rules for real learners: authenticated user is often treated as admin, public question reads may expose answers, and anonymous write validation needs review.
+## AI and files
 
-For build checks use `npm run build`, which selects Webpack. The Firebase shared-app override is required for the current Node 22 client dependency combination; see WARNING-CLEANUP.md. Next uses static export, producing `frontend/out`; `next start` is not the appropriate server for that output. A static host needs the dynamic-path rewrites documented in `firebase.json` (placeholder pages), which require browser smoke testing. Static cache headers are configured in firebase.json because Next static export does not serve headers.
+AI needs only `OPENAI_API_KEY` in `backend/.env`, followed by a backend restart. The server uses `gpt-4.1-mini` via OpenAI Responses for text and image input. Never put the key into a `NEXT_PUBLIC_*` variable, browser storage or committed file. API billing/credits and model access are required. Automated checks mock OpenAI; live output quality remains unverified.
 
-Functions: `cd functions && npm ci && npm run build`. AI calls OpenAI directly; no private worker is needed. See the OpenAI setup below. Do not run the existing deploy script during local review. AI/storage are optional for core; their application flows are not claimed to work without providers.
+Camera/image uploads use the optional R2-compatible storage configuration in the backend example file. Skill-exam recordings use local disk under `UPLOAD_DIR/recordings` (default `backend/uploads/recordings`) and MongoDB metadata; they no longer use Firebase Storage. The upload route checks the published template/question and a 20 MB file limit. Playback URLs use unguessable identifiers and should be treated as bearer links. The local disk directory must be persistent and backed up separately from MongoDB. A shared filesystem or storage adapter is required before running multiple backend replicas.
 
-## Before production hosting
+Question content, session information or OMR images are sent to OpenAI when the corresponding AI action is requested. Calls request `store: false`; provider retention policies still apply. Evaluate consent, data minimization and output accuracy before real-student use.
 
-Resolve READINESS.md blockers, select one authoritative auth/data architecture, establish least-privilege rules and tenant tests, validate upload limits and grading server-side, then document HTTPS, reverse proxy/body limits, secret management, backups/restores, data retention/deletion and operator recovery for the chosen architecture. This preparation does not certify a production-ready deployment.
+## Test the database integration
 
-## Tiếng Việt
+Against a dedicated local test MongoDB:
 
-Core là đường chạy độc lập có thể tái lập. Backend chỉ chạy thử trong thư mục mới với MongoDB local và biến môi trường tự tạo; không seed vào DB hiện có. Giao diện hiện dùng Firebase, không dùng JWT backend cho đăng nhập thông thường. Chưa có quy trình triển khai toàn app hoàn chỉnh/an toàn production; cần sửa các blocker trước khi sử dụng dữ liệu học viên thật.
+```sh
+cd backend
+TEST_MONGODB_URI=mongodb://127.0.0.1:27017 npm run test:integration
+```
 
+The test only accepts an explicit loopback URI, creates a random `classora_integration_*` database, uses synthetic records and removes that test database afterward. It exercises real HTTP requests plus the actual frontend adapters: login, tenant boundaries, question/exam creation, publication, persisted session tokens, grading/results, teacher profile/feedback, flashcards, quiz/poll, PDF output and skill recordings/submissions. It does not read or import production databases. CI runs this test against a fresh MongoDB service.
 
-## Optional OpenAI setup / Cấu hình AI
+## Existing data and migration
 
-Only `OPENAI_API_KEY` is required for AI. The server uses `gpt-4.1-mini` for text and image input through the Responses API. No custom URL or private worker is required.
+This code change **does not copy, delete or modify existing Firestore or MongoDB data**. See [database architecture and migration](DATABASE.md) before pointing the new application at an existing database. Do not run seed/backfill/index changes against an existing environment without a reviewed backup and migration plan.
 
-- NestJS: add your key to `backend/.env` as `OPENAI_API_KEY=...`, then restart the backend.
-- Firebase (the current frontend AI path): run `firebase functions:secrets:set OPENAI_API_KEY` for your own project, enter the key at the prompt, then deploy the `examAi` function. Setting only the NestJS environment does not configure Firebase.
-- Firebase emulation: add `OPENAI_API_KEY=...` to `functions/.secret.local`; this file is ignored by Git.
-- Never use `NEXT_PUBLIC_OPENAI_API_KEY`, browser storage, or a committed file. The UI has no API-key entry form.
+## Static hosting
 
-Câu hỏi, thông tin phiên thi và ảnh OMR được gửi tới OpenAI khi dùng tính năng tương ứng. Review dữ liệu trước khi sử dụng với học sinh thật. Calls request `store: false`; provider retention policies still apply. API usage requires an API account with billing/credits and model access. Missing keys preserve existing fallback messages where supported; generation and OMR require a working provider.
+`npm run build` in `frontend/` exports `frontend/out`. Configure `NEXT_PUBLIC_API_URL` before building; it is embedded in the client bundle. Serve over HTTPS, configure `FRONTEND_URL` on the backend for CORS, and put a reverse proxy in front of the API.
 
-Protocol reference: https://developers.openai.com/api/docs/guides/text and https://developers.openai.com/api/docs/guides/images-vision. Automated checks mock the provider; they do not verify live credentials or educational accuracy.
+Dynamic static routes need explicit rewrites to the exported placeholder documents for `/e/:code`, `/skills/:code`, `/quiz/live/:code`, `/poll/live/:code`, `/quiz/flashcard/:code`, `/quiz/matching/:setId`, `/admin/exam-print/:id`, `/admin/exam-sheet/:id`, and `/admin/skills-exam-print/:id`. For example `/e/ABC` must serve `/e/placeholder.html` while preserving the browser URL. Do not rewrite unknown API routes to HTML. Set security/cache headers in your chosen host or proxy; the obsolete Firebase hosting configuration has been removed.
+
+## Remaining production work
+
+Rate/abuse limits on public endpoints, time/deadline enforcement, data retention/deletion, backup restoration drills, malformed uploads and deployment hardening still need review. The inherited licensing endpoints remain no-op stubs. The historical UX audit is retained as a prior snapshot; its Firebase-adapter findings are superseded by this migration. Browser/device behavior, real microphone capture and production operations have not been fully validated.

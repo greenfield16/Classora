@@ -6,17 +6,17 @@
 
 ## About / short description
 
-Exam authoring and student practice for teachers: Vietnamese DOCX import, question banks, assessments and flashcards. Next.js, NestJS and Firebase. Development preview.
+Exam authoring and student practice for teachers: Vietnamese DOCX import, question banks, assessments and flashcards. Next.js, NestJS and MongoDB. Development preview.
 
 ## Giới thiệu ngắn tiếng Việt
 
-Classora là dự án quản lý đề thi và ôn tập cho giáo viên, gồm ngân hàng câu hỏi, import DOCX tiếng Việt, giao diện thi và flashcard. Mã nguồn toàn ứng dụng đang được chuẩn bị public; các luồng còn thiếu được ghi rõ trong README và roadmap.
+Classora là dự án quản lý đề thi và ôn tập cho giáo viên, gồm ngân hàng câu hỏi, import DOCX tiếng Việt, giao diện thi và flashcard. Mã nguồn toàn ứng dụng đã public, dùng NestJS và MongoDB thống nhất; các luồng còn thiếu được ghi rõ trong README và roadmap.
 
 ## Longer introduction
 
 Classora is an education project for organizing questions, composing assessments and supporting student practice in a browser. It focuses on Vietnamese teaching workflows and includes structured DOCX import, multiple-choice/true-false/short-answer question formats, teacher administration, flashcard practice and skill-exam interfaces.
 
-The intended public repository contains the full application: the Next.js frontend, NestJS/MongoDB API, Firebase Functions, rules, tests and documentation. Development is focused on making these pieces easier to understand, validate and operate over time.
+The intended public repository contains the full application: the Next.js frontend, NestJS/MongoDB API, MongoDB Functions, rules, tests and documentation. Development is focused on making these pieces easier to understand, validate and operate over time.
 
 This is a development preview. Some classroom activities and reporting paths still use adapter stubs, and public exam submission, authorization and deployment need further work. The feature matrix and UX/UI audit describe these limitations so contributors can work from concrete evidence.
 

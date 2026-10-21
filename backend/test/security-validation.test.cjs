@@ -20,7 +20,7 @@ test('class role restrictions reject missing/student identities and allow admin'
 test('JWT rejects revoked/deleted accounts even when token previously valid', async () => {
   for(const user of [null,{isActive:false},{isActive:true}]) {
     const strategy = new JwtStrategy(new ConfigService({JWT_SECRET:'synthetic-test-only-key'}),{validateById:async()=>user});
-    if(user?.isActive) assert.equal(await strategy.validate({sub:'synthetic'}),user);
+    if(user?.isActive) assert.equal((await strategy.validate({sub:'synthetic'})).isActive,true);
     else await assert.rejects(strategy.validate({sub:'synthetic'}),e=>e.getStatus()===401);
   }
 });

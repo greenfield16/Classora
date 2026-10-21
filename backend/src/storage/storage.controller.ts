@@ -1,10 +1,11 @@
 // src/storage/storage.controller.ts
-import { Controller, Post, Body, UseGuards, Logger } from '@nestjs/common'
-import { AuthGuard } from '@nestjs/passport'
+import { Controller, Post, Body, UseGuards, Logger, Req, BadRequestException } from '@nestjs/common'
+import { JwtAuth } from '../auth/guards'
+import { randomUUID } from 'node:crypto'
 import { StorageService } from './storage.service'
 
 @Controller('storage')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(JwtAuth())
 export class StorageController {
   private logger = new Logger(StorageController.name)
 
@@ -12,10 +13,10 @@ export class StorageController {
 
   // Frontend calls this to get a presigned URL, then uploads directly to R2
   @Post('presign')
-  presign(@Body() body: { key: string; contentType: string }) {
-    this.logger.log(`🔐 [presign] Requesting signed URL for: ${body.key}`)
-    const result = this.svc.getPresignedUrl(body.key, body.contentType)
-    this.logger.log(`✅ [presign] Generated presigned URL`)
-    return result
+  presign(@Body() body: { key: string; contentType: string }, @Req() req: any) {
+    const types: Record<string,string> = { 'image/jpeg':'jpg', 'image/png':'png', 'image/webp':'webp' }
+    if (!types[body.contentType]) throw new BadRequestException('Chỉ hỗ trợ ảnh JPEG, PNG hoặc WebP')
+    const key = `uploads/${req.user.organizationId}/${randomUUID()}.${types[body.contentType]}`
+    return this.svc.getPresignedUrl(key, body.contentType)
   }
 }

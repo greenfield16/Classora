@@ -5,18 +5,18 @@ Generated from package locks, installed metadata and hash-verified exact upstrea
 | Declared license | Entries |
 |---|---:|
 | (MIT AND Zlib) | 1 |
-| 0BSD | 3 |
-| Apache-2.0 | 285 |
+| 0BSD | 2 |
+| Apache-2.0 | 154 |
 | Apache-2.0 AND LGPL-3.0-or-later | 3 |
 | Apache-2.0 AND LGPL-3.0-or-later AND MIT | 1 |
 | BSD-2-Clause | 14 |
-| BSD-3-Clause | 40 |
-| BlueOak-1.0.0 | 14 |
+| BSD-3-Clause | 8 |
+| BlueOak-1.0.0 | 4 |
 | CC-BY-4.0 | 1 |
 | CC0-1.0 | 1 |
-| ISC | 79 |
+| ISC | 41 |
 | LGPL-3.0-or-later | 10 |
-| MIT | 1120 |
+| MIT | 867 |
 | MPL-2.0 | 1 |
 | Python-2.0 | 1 |
 

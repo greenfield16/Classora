@@ -1,23 +1,22 @@
 # Feature status
 
-Source-reviewed 2026-10-21. “Implemented” below means code exists; it does not assert production readiness or end-to-end verification.
+Updated after the MongoDB consolidation, 2026-10-21. Code presence and the synthetic integration test do not certify production readiness.
 
-| Feature | Current evidence | Status / limitation |
+| Feature | Current implementation | Validation / limits |
 |---|---|---|
-| DOCX import | Backend ZIP/XML parser; separate browser parser; synthetic core tests | Backend basic paragraphs verified; browser parity, complex layouts and untrusted upload hardening remain |
-| Subjects/question banks | Firestore adapter and teacher UI | Implemented; ownership/rules and failure-state work remain |
-| Exam authoring | UI and Firebase/backend models | Implemented; full lifecycle and variant parity not verified |
-| Public exam submission | UI + Firebase gradeExam callable | Blocked: missing session context persistence, anonymous/auth mismatch and timeout closure risk |
-| Quiz Live | UI/backend implementation, Firebase methods returning null/empty/fixed values | Current Firebase UI path is incomplete; do not advertise as working live service |
-| Poll Live | UI/backend implementation, Firebase methods returning null/empty | Current Firebase UI path is incomplete |
-| Matching from quiz | Public UI uses getPublicQuizSet stub | Current adapter cannot supply a playable set |
-| Flashcard/SRS | Firestore adapter + review/matching UI | Implemented; algorithm/browser/persistence E2E not verified |
-| Skill exams | Template editor, public page, recording upload/submission | Implemented; timing enforcement, recovery, retention and authorization incomplete |
-| Camera/OCR grading | Firebase scanAndGrade returns fixed 8.5/mock student number | Mock; never use its output as an actual assessment result |
-| Question analytics | Firebase adapter returns empty analytics | Placeholder in current UI path |
-| PDF result export | Backend report service, Firebase downloadPdfReport returns null | Incomplete UI integration; report generation not validated end-to-end |
-| AI support | Callable functions and direct OpenAI Responses API | Requires server-side OPENAI_API_KEY; outputs require teacher review; live provider calls not yet validated |
-| Entitlements | Licensing guard/service return success | Existing no-op stubs; pricing/payment activation is not established |
-| Full self-hosting | Separate Firebase frontend and MongoDB/JWT backend | Architecture convergence and reproducible full deployment remain roadmap work |
+| Authentication | MongoDB users, bcrypt passwords, NestJS JWT; teacher-only protected routes | Login, password change, rejected anonymous/student requests tested |
+| Subjects/question banks | Frontend HTTP adapter → NestJS → scoped MongoDB records | Creation, isolation and foreign subject references tested |
+| DOCX import | Backend ZIP/XML parser via multipart API | Synthetic core tests; complex layouts and hostile ZIP hardening remain |
+| Exam authoring/publication | MongoDB exams and generated variants | Basic publication and hidden public answer keys tested |
+| Public submission | Real MongoDB session, random capability token, server grading | Frontend adapter round trip, persisted results, repeated submission and tenant isolation tested; complete timing/concurrency/recovery scenarios remain |
+| Quiz/poll | Frontend now calls existing MongoDB APIs; former empty stubs removed | Synthetic creation/start/join tested; full classroom timing, load and browser behavior not established |
+| Flashcards/matching | MongoDB cards, matching items and progress | Empty-set authoring, update, public data and owner isolation tested; SRS browser behavior remains |
+| Skill exams | Scoped MongoDB templates/submissions; local recording files and metadata | Publish, hidden correct options, upload/playback, submission ownership and frontend adapter tested; timing/retention/real microphone testing remain |
+| Camera/OCR grading | Existing NestJS OMR path now wired into frontend | Fixed-score mock removed; requires configured image storage/OpenAI; real image accuracy unverified |
+| Question analytics | Existing NestJS analytics, now wired into frontend | Basic HTTP response tested; analytical correctness needs fixtures |
+| PDF reports | Scoped MongoDB results, repaired bundled-font PDF generation | PDF bytes and cross-workspace rejection tested |
+| AI support | NestJS → OpenAI Responses, server-only OPENAI_API_KEY | Mocked text/image/error tests; no live provider evaluation |
+| Licensing | Inherited guard/service no-op stubs | No payment/entitlement enforcement claim |
+| Self-hosting | One MongoDB API/auth path; no Firebase runtime dependency | Frontend/backend builds and fresh native MongoDB HTTP integration tested; Docker stack source-reviewed, not run locally |
 
-See [UX/UI audit](ux/AUDIT.md), [readiness](oss/READINESS.md) and [validation](oss/VALIDATION.md) for evidence and remaining work.
+Existing databases are untouched. See [migration](DATABASE.md), [setup](SELF_HOSTING.md), [validation](oss/VALIDATION.md) and [readiness](oss/READINESS.md). Historical Firebase-adapter findings in the UX audit no longer describe the active data path.

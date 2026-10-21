@@ -5,12 +5,12 @@ root=pathlib.Path(__file__).resolve().parents[1]
 out=root/'artifacts/classora-source-review'
 if out.exists(): raise SystemExit('Candidate exists; move it aside before regenerating.')
 files=set()
-root_files=['LICENSE','NOTICE','THIRD_PARTY_NOTICES.md','README.md','README.vi.md','CONTRIBUTING.md','SECURITY.md','ROADMAP.md','CHANGELOG.md','DESIGN.md','.gitignore','.nvmrc','.env.example','firebase.json','firestore.rules','storage.rules','docker-compose.yml','docker-compose.local.yml']
+root_files=['LICENSE','NOTICE','THIRD_PARTY_NOTICES.md','README.md','README.vi.md','CONTRIBUTING.md','SECURITY.md','ROADMAP.md','CHANGELOG.md','DESIGN.md','.gitignore','.nvmrc','.env.example','docker-compose.yml','docker-compose.local.yml']
 for rel in root_files:files.add(pathlib.Path(rel))
-for directory in ['backend/src','backend/test','frontend/src','functions/src','core/test','core/.github','.github','scripts']:
+for directory in ['backend/src','backend/test','frontend/src','core/test','core/.github','.github','scripts']:
  for p in (root/directory).rglob('*'):
   if p.is_file() and p.suffix in {'.ts','.tsx','.css','.cjs','.js','.py','.yml','.md'}:files.add(p.relative_to(root))
-for project in ['backend','frontend','functions','core']:
+for project in ['backend','frontend','core']:
  for p in (root/project).iterdir():
   if p.is_file() and (p.name in {'package.json','package-lock.json','README.md','NOTICE','THIRD_PARTY_NOTICES.md','demo.cjs','Dockerfile.dev','.dockerignore','.env.example'} or p.name.startswith(('tsconfig','nest-cli','eslint.config','next.config','postcss.config','tailwind.config'))):
    if p.suffix not in {'.tsbuildinfo'}:files.add(p.relative_to(root))

@@ -112,9 +112,9 @@ export const useAuthStore = create<AuthStore>()(
       setUser: (user) => set({ user }),
       isAdmin: () => {
         const role = get().user?.role
-        return role === 'SUPER_ADMIN' || role === 'ADMIN'
+        return role === 'SUPER_ADMIN' || role === 'ADMIN' || role === 'TEACHER'
       },
     }),
-    { name: 'itsvcs_auth' }
+    { name: 'classora_auth', version: 1 }
   )
 )

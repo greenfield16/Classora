@@ -1,25 +1,32 @@
+# Development stack. Copy backend/.env.example to backend/.env and set credentials first.
 services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - classora_mongo_data:/data/db
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-    env_file: .env
+    env_file: ./backend/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     volumes:
       - ./backend:/app
       - /app/node_modules
+    depends_on:
+      - mongo
     command: npm run start:dev
-
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    env_file: .env
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -27,3 +34,5 @@ services:
     depends_on:
       - backend
     command: npm run dev
+volumes:
+  classora_mongo_data:

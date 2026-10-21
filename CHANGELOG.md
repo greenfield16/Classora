@@ -53,3 +53,14 @@
 - Replaced the private AI worker in backend and Firebase Functions with direct OpenAI Responses API calls.
 - AI setup now requires only a server-side `OPENAI_API_KEY`; no worker URL or private gateway is needed.
 - Added text/image transport regression coverage and updated English/Vietnamese setup documentation.
+
+
+### MongoDB consolidation
+
+- Replaced Firestore browser calls and Firebase Auth with NestJS HTTP/JWT and MongoDB.
+- Routed question/exam/result, quiz/poll, flashcard, profile, feedback and skill workflows through one backend; removed fake frontend session/score responses.
+- Added scoped teacher profile/feedback and skill template/submission storage, persistent local recording uploads and server OpenAI endpoint.
+- Scoped tenant queries, validated teacher identities/references, protected public session submission with random tokens and made the grading state transition atomic.
+- Repaired PDF bundled font handling and added isolated MongoDB integration coverage, including actual frontend adapters over HTTP.
+- Removed Firebase dependencies, deployed-function sources/config and obsolete MongoDB-to-Firestore migration script. No existing database or external deployment was modified.
+- Documented canonical environment settings, fresh installs, recording persistence, legacy account/data/index migration and remaining production limitations.

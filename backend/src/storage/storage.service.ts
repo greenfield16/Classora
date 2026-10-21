@@ -1,5 +1,5 @@
 // src/storage/storage.service.ts
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
@@ -51,6 +51,7 @@ export class StorageService {
   }
 
   async getPresignedUrl(key: string, contentType: string, expiresIn = 3600) {
+    if (!this.publicUrl || !this.config.get('R2_ACCESS_KEY_ID') || !this.config.get('R2_SECRET_ACCESS_KEY')) throw new ServiceUnavailableException('Image storage is not configured')
     this.logger.log(`📝 [getPresignedUrl] Creating presigned URL for ${key} (${contentType})`)
     const command = new PutObjectCommand({
       Bucket:      this.bucket,

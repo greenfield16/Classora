@@ -1,118 +1,32 @@
+import { useAuthStore } from './store'
 // src/lib/api.ts
 // Central API client — all fetch calls go through here
-import { useAuthStore } from './store'
+
 
 // ── Shared types ─────────────────────────────────────────
 export type ServiceItem = { name: string; description: string }
 
-const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
-// ── GreenMind AI via authenticated Firebase Function ─────
-async function aiReq<T>(task: string, payload: object): Promise<T> {
-  const { getFunctions, httpsCallable } = await import('firebase/functions')
-  const { app } = await import('./firebase')
-  const functions = getFunctions(app, 'asia-southeast1')
-  const callExamAi = httpsCallable<{ task: string; payload: object }, T>(functions, 'examAi')
-  const res = await callExamAi({ task, payload })
-  return res.data
-}
 
+// All application data and AI requests use the NestJS API.
+import { request, jsonBody, API_BASE as BASE } from './http'
+const aiReq = <T,>(task: string, payload: object) => request<T>('/ai', jsonBody('POST', { task, payload }))
 export const examAI = {
-  generateQuestions: (data: { subjectName: string; gradeLevel: number; topic: string; questionType: string; count: number; difficulty: string; chapter?: string }) =>
-    aiReq<{ ok: boolean; questions: any[]; count: number; model: string }>('generateQuestions', data),
-
-  explainAnswer: (data: { question: string; choices: string[]; correctIndex: number; subjectName?: string; gradeLevel?: number }) =>
-    aiReq<{ ok: boolean; explanation: string; model: string }>('explainAnswer', data),
-
-  parseQuestions: (data: { text: string; questionType?: string; gradeLevel?: number; difficulty?: string }) =>
-    aiReq<{ ok: boolean; questions: any[]; count: number; model: string }>('parseQuestions', data),
-
-  analyzeQuizSession: (data: { title: string; questions: any[]; leaderboard: any[]; totalParticipants: number }) =>
-    aiReq<{ ok: boolean; analysis: string; model: string }>('analyzeQuizSession', data),
-
-  analyzePollSession: (data: { title: string; questions: any[]; totalParticipants: number }) =>
-    aiReq<{ ok: boolean; analysis: string; model: string }>('analyzePollSession', data),
-
-  detectCheating: (data: { examTitle?: string; students: any[] }) =>
-    aiReq<{ ok: boolean; analysis: string; model: string }>('detectCheating', data),
+  generateQuestions: (data: { subjectName: string; gradeLevel: number; topic: string; questionType: string; count: number; difficulty: string; chapter?: string }) => aiReq<{ ok: boolean; questions: any[]; count: number; model: string }>('generateQuestions', data),
+  explainAnswer: (data: { question: string; choices: string[]; correctIndex: number; subjectName?: string; gradeLevel?: number }) => aiReq<{ ok: boolean; explanation: string; model: string }>('explainAnswer', data),
+  parseQuestions: (data: { text: string; questionType?: string; gradeLevel?: number; difficulty?: string }) => aiReq<{ ok: boolean; questions: any[]; count: number; model: string }>('parseQuestions', data),
+  analyzeQuizSession: (data: object) => aiReq<{ ok: boolean; analysis: string; model: string }>('analyzeQuizSession', data),
+  analyzePollSession: (data: object) => aiReq<{ ok: boolean; analysis: string; model: string }>('analyzePollSession', data),
+  detectCheating: (data: object) => aiReq<{ ok: boolean; analysis: string; model: string }>('detectCheating', data),
 }
-
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const { headers, ...restInit } = init || {};
-  const url = `${BASE}${path}`
-  const method = init?.method || 'GET'
-  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData
-  console.log(`📤 [API] ${method} ${url}`)
-
-  const res = await fetch(url, {
-    ...restInit,
-    headers: {
-      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...headers,
-    },
-  })
-  console.log(`📥 [API] ${method} ${url} → ${res.status}`)
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      try {
-        localStorage.removeItem('itsvcs_auth')
-      } catch {}
-      if (typeof window !== 'undefined') {
-        window.location.assign(new URL('/admin/login', window.location.origin).href)
-      }
-    }
-    const err = await res.json().catch(() => ({ message: res.statusText }))
-    throw new Error(err.message || `HTTP ${res.status}`)
-  }
-  // 204 No Content or empty body (e.g. DELETE) — don't attempt JSON parse
-  if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as any
-  const text = await res.text()
-  return text ? JSON.parse(text) : undefined
+const req = request
+function authed(token: string, init: RequestInit = {}): RequestInit {
+  return { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } }
 }
-
-function authed(token: string, init?: RequestInit): RequestInit {
-  return {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...init?.headers,
-    },
-  }
-}
-
-// ── Auth ────────────────────────────────────────────────────
 export const auth = {
-  login: async (email: string, password: string) => {
-    const { signInWithEmailAndPassword } = await import('firebase/auth')
-    const { auth: firebaseAuth } = await import('./firebase')
-    const cred = await signInWithEmailAndPassword(firebaseAuth, email, password)
-    const token = await cred.user.getIdToken()
-    return {
-      access_token: token,
-      user: {
-        id: cred.user.uid,
-        email: cred.user.email || email,
-        name: cred.user.displayName || email.split('@')[0],
-        role: 'ADMIN'
-      } as any
-    }
-  },
-  updateMe: (token: string, data: { name?: string; email?: string }) =>
-    req<User>('/users/me', authed(token, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    })),
-  changePassword: async (oldPassword: string, newPassword: string) => {
-    const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = await import('firebase/auth')
-    const { auth: firebaseAuth } = await import('./firebase')
-    await firebaseAuth.authStateReady()
-    const user = firebaseAuth.currentUser
-    if (!user?.email) throw new Error('Không tìm thấy tài khoản đang đăng nhập.')
-    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, oldPassword))
-    await updatePassword(user, newPassword)
-    return { success: true }
-  },
+  login: (email: string, password: string) => request<{ access_token: string; user: User }>('/auth/login', jsonBody('POST', { email, password })),
+  updateMe: (token: string, data: { name?: string; email?: string }) => request<User>('/auth/me', authed(token, jsonBody('PATCH', data))),
+  changePassword: (oldPassword: string, newPassword: string) => request('/auth/password', jsonBody('POST', { oldPassword, newPassword })),
 }
 
 // ── Licensing ───────────────────────────────────────────────
@@ -769,12 +683,7 @@ export const warehouse = {
 }
 
 // ── Exams ────────────────────────────────────────────────────
-import { exams as firebaseExams } from './firebase-api'
-import { profiles as firebaseProfiles } from './firebase-api'
-import { feedback as firebaseFeedback } from './firebase-api'
-export const exams = firebaseExams
-export const profiles = firebaseProfiles
-export const feedback = firebaseFeedback
+export { exams, profiles, feedback } from './mongo-api'
 
 export interface TeacherProfile {
   uid: string

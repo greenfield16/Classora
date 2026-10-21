@@ -132,6 +132,9 @@ export class ExamSession {
   @Prop({ type: Object })
   organizationId?: Types.ObjectId
 
+  @Prop({ select: false })
+  sessionTokenHash?: string
+
   /** Cache giải thích đáp án từ AI — tránh gọi lại nhiều lần */
   @Prop({ type: Object })
   aiExplanation?: Record<string, { explanation: string; tip?: string }>

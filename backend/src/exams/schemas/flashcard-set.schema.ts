@@ -15,6 +15,9 @@ class FlashCard {
   questionId?: Types.ObjectId // nếu tạo từ ngân hàng câu hỏi
 
   @Prop()
+  imageUrl?: string
+
+  @Prop()
   hint?: string // gợi ý thêm
 }
 const FlashCardSchema = SchemaFactory.createForClass(FlashCard)
@@ -39,6 +42,9 @@ export class FlashcardSet {
 
   @Prop({ type: [FlashCardSchema], default: [] })
   cards: FlashCard[]
+
+  @Prop({ type: [Object], default: [] })
+  matchingItems: any[]
 
   /** Mã truy cập ngắn dùng cho link public */
   @Prop({ unique: true, sparse: true })

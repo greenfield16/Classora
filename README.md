@@ -1,98 +1,74 @@
 # Classora
 
-**An exam workspace for teachers, with browser-based assessment and student practice.**
+[Tiếng Việt](README.vi.md) · [Setup](docs/SELF_HOSTING.md) · [Database](docs/DATABASE.md) · [Feature status](docs/FEATURE_STATUS.md)
 
-[Tiếng Việt](README.vi.md) · [Setup](docs/SELF_HOSTING.md) · [Feature status](docs/FEATURE_STATUS.md) · [UX/UI audit](docs/ux/AUDIT.md) · [Roadmap](ROADMAP.md)
+Classora is an open-source education toolkit for teachers to create assessments, organize question banks and support student practice. The interface is primarily Vietnamese, with multiple-choice, true/false and short-answer question formats.
 
-Classora brings question banks, exam authoring, DOCX import, student results and practice activities into one education-focused project. Its interface is primarily Vietnamese, with question formats for multiple choice, true/false statements and short answers.
+**Development preview.** This personally initiated project is maintained by **Joseph. MD** and licensed under **Apache-2.0**. Several workflows still need production hardening and real-device evaluation; this is not a fully audited system for real student records.
 
-The intended public scope is the **full application**: frontend, backend, Firebase Functions, rules, tests and documentation. A small independently usable parser/scoring package is also available as an optional extraction.
+## One application, one database
 
-> **Development preview.** This full-source development preview is under active development. Original Classora source is licensed under Apache-2.0, with attribution to Joseph. MD; third-party dependencies retain their own licenses. Several visible features remain incomplete; this is not yet a validated production system for real student records.
+```text
+Next.js frontend → NestJS API → MongoDB
+                        ├→ OpenAI (optional)
+                        ├→ local skill recordings
+                        └→ R2-compatible image storage (optional)
+```
 
-## What is in the project?
+Authentication, teacher profiles, feedback, question banks, exams/results, quiz/poll, flashcards and skill exams all use the backend and MongoDB. There is no Firebase SDK, Firestore database or Firebase Functions deployment in the current application. Browser code receives no database credentials or OpenAI secret.
 
-- **Teacher workspace:** organize subjects and questions, compose exams, review results and manage student information.
-- **DOCX import:** read structured Vietnamese question documents; synthetic fixtures cover all three supported question formats.
-- **Assessment interfaces:** public exam entry, timed answering, submission and result screens.
-- **Practice and classroom activities:** flashcard/SRS, matching, quiz and poll interfaces, with different levels of backend integration.
-- **Skill-based exams:** reading, listening/TTS, writing and quiz sections, including browser audio recording and submission code.
-- **Optional AI:** question generation, explanation and analysis directly through OpenAI (server-side API key only).
+The UI opens directly into the teacher workspace. Student exam and practice links remain directly accessible. Project introduction belongs here rather than in a sales landing page.
 
-**Feature presence is not a completion claim.** Quiz/poll methods in the current Firebase adapter are stubs; camera grading returns a fixed mock result; analytics/PDF adapter paths are incomplete. Public exam submission also has unresolved session/authentication integration. Read the [feature matrix](docs/FEATURE_STATUS.md) before evaluating or deploying a flow.
+## Features
 
-The application opens directly into the teacher workspace at `/`; signed-out visitors are sent to `/admin/login`. Student exam/practice links remain directly accessible. Project introduction and setup live in this README; the application has no sales landing page or pricing table.
+- Subject and question banks; manual authoring and DOCX import.
+- Exam publication, variants, persisted student sessions and server-side grading.
+- Student/result reports, question analytics and PDF export.
+- Quiz/poll APIs, flashcards, matching and spaced repetition.
+- Skill-exam templates, written answers and recording uploads.
+- Optional OpenAI question generation, explanations, analysis and OMR image extraction. Only a server-side `OPENAI_API_KEY` is needed.
 
-## Architecture
+Read the [feature matrix](docs/FEATURE_STATUS.md) for tested scope and limits. AI accuracy, abuse controls, timing enforcement and production operations remain work in progress.
+
+## Run locally
+
+Use Node 22 and your own development MongoDB. Follow the [complete setup guide](docs/SELF_HOSTING.md):
+
+1. Start an isolated MongoDB (`docker compose -f docker-compose.local.yml up -d` is one option).
+2. Copy `backend/.env.example` to `backend/.env`; set MongoDB settings, a random JWT secret and administrator credentials.
+3. In `backend/`: `npm ci`, `npm run build`, `npm run seed`, `npm run start:prod`.
+4. Copy `frontend/.env.example` to `frontend/.env.local` and configure the backend URL.
+5. In `frontend/`: `npm ci`, `npm run dev`; open localhost:3000 and sign in.
+
+A Docker development stack is also included. Existing Firebase/MongoDB data is **not automatically migrated**; read [migration notes](docs/DATABASE.md) before changing an existing installation.
+
+## Project layout
 
 | Directory | Purpose |
 |---|---|
-| `frontend/` | Next.js 16 / React 19 interface, static export, Firebase browser SDK |
-| `backend/` | NestJS 12 API, MongoDB/Mongoose, separate JWT authentication, DOCX parser and report services |
-| `functions/` | Firebase callable functions, grading and optional AI integration |
-| `core/` | Standalone package template and shared domain tests |
-| `docs/` | Setup, audits, contribution and release planning |
-| `scripts/` | Dependency/source inventories and allowlisted core export |
+| `frontend/` | Next.js 16 / React 19 teacher and student UI; HTTP API adapters |
+| `backend/` | NestJS, MongoDB/Mongoose, JWT auth, grading, OpenAI, media and reports |
+| `core/` | Independently usable parser/scoring package template and synthetic tests |
+| `docs/` | Setup, migration, feature status, historical UX/security/license reviews |
+| `scripts/` | Source/dependency inventories and allowlisted source exporters |
 
-The current frontend uses Firebase Auth, Firestore and callable functions for principal workflows. The NestJS/MongoDB backend has a separate authentication/data path. Setting `NEXT_PUBLIC_API_URL` does not switch the whole UI to MongoDB. Consolidating these paths is a major roadmap item.
-
-## Start with a verified local example
-
-Use Node 22 (`.nvmrc`), npm and Python 3. From the repository root:
+## Validation
 
 ```sh
-python3 scripts/export-core.py
-cd artifacts/green-exams-core
-npm ci
-npm test
-npm run demo
-```
-
-This example needs no database, Firebase project or AI credentials. It builds a DOCX question parser and true/false scorer, runs synthetic tests, and prints a demo score of **0.25**. The exporter refuses to overwrite an existing candidate; move an earlier candidate aside before regenerating it.
-
-## Run the application for development
-
-Follow the [setup and self-hosting guide](docs/SELF_HOSTING.md) in a fresh working directory with your own development services. It covers the MongoDB backend and Firebase frontend separately, lists environment variables and explains static-host rewrites. Example files contain no usable credentials.
-
-```sh
-# Backend: after configuring an isolated backend/.env
 cd backend
-npm ci
 npm test
-npm run build
-
-# Frontend: after configuring your own frontend/.env.local
-cd ../frontend
-npm ci
-npm run lint
-npm run build
-npm run dev
-
-# Firebase Functions: compile locally; deployment is a separate action
-cd ../functions
-npm ci
-npm run lint
-npm run build
+# Dedicated local test MongoDB only; creates and drops a random synthetic test DB:
+TEST_MONGODB_URI=mongodb://127.0.0.1:27017 npm run test:integration
 ```
 
-**Before using the full application:** resolve the [release blockers](docs/oss/READINESS.md), especially public submission, teacher/tenant authorization, Firebase rules and draft recovery. There is no complete one-command production deployment yet. External AI and object storage require separately configured providers and may incur their own costs.
+Frontend checks: `npm run lint` and `npm run build` in `frontend/`. CI includes a fresh MongoDB integration job. The integration test also executes the real frontend adapters against HTTP endpoints; it does not simulate a browser or microphone. Live OpenAI calls have not been verified.
 
-## Quality and current limits
+For the independent core demo, run `python3 scripts/export-core.py`, then `npm ci`, `npm test`, `npm run demo` in `artifacts/green-exams-core`. It requires no database or AI credentials. Exporters refuse to overwrite an existing candidate.
 
-The latest local verification passed 9 backend tests, frontend lint with zero warnings, and builds for frontend, backend and Functions. Core tests use newly authored synthetic questions. Full MongoDB/Firebase end-to-end workflows, real-device recording, accessibility conformance and production readiness have not been established.
+## Contributing and security
 
-Backend/Functions dependency audits and the frontend production audit returned zero known findings at the last check. The frontend development graph retains one unpatched upstream `braces` advisory across seven dependency entries. See [validation](docs/oss/VALIDATION.md) and [dependency review](docs/oss/WARNING-CLEANUP.md) for exact scope.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [roadmap](ROADMAP.md) and [readiness notes](docs/oss/READINESS.md). Do not include credentials, student records, recordings or assessment material without redistribution rights in issues or pull requests. The historical UX audit remains available; database/adapter findings predating the MongoDB migration are superseded by the current feature matrix.
 
-The [Impeccable UX/UI audit](docs/ux/AUDIT.md) records interaction, accessibility, responsive and product-integrity issues, with evidence and a prioritized remediation plan.
+## License
 
-## Contribute
-
-Useful starting points include reliable student submission, accessible shared form/dialog components, explicit feature availability, safe exam draft recovery, Firebase rules tests and deployment documentation.
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md), use synthetic data, and document the origin of copied code or assets. Contributions follow the Apache-2.0 terms described in CONTRIBUTING.md. Security issues follow [SECURITY.md](SECURITY.md); the private reporting channel is pending owner confirmation.
-
-## Release and license
-
-Copyright 2026 **Joseph. MD**. Original project source and documentation are licensed under [Apache-2.0](LICENSE). See [NOTICE](NOTICE), [third-party notices](THIRD_PARTY_NOTICES.md), [license/provenance review](docs/oss/LICENSE-DECISION.md) and the [publication checklist](docs/oss/FULL-PROJECT-PUBLICATION.md). The application uses a plain-text Classora wordmark; previous company logo assets are excluded.
-
-The proposed release includes this exam application. EDU ERP/EduEng commercial products, private credentials, student records, recordings, database backups and exam materials without redistribution rights are outside its publication scope.
+Copyright 2026 **Joseph. MD**. Original source and documentation are licensed under [Apache-2.0](LICENSE). Dependencies retain their own licenses; see [NOTICE](NOTICE), [third-party notices](THIRD_PARTY_NOTICES.md) and [license review](docs/oss/LICENSE-DECISION.md). Classora uses a plain-text wordmark. Source publication does not grant rights to private learner data or third-party exam content.

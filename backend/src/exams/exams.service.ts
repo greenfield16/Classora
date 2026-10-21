@@ -1,5 +1,5 @@
 import { scoreTrueFalse } from './scoring'
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Injectable, NotFoundException, BadRequestException, UnauthorizedException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import * as crypto from 'crypto'
@@ -197,15 +197,19 @@ function getSelectedExamColumnLabel(examType?: string, customExamLabel?: string)
   }
 }
 
-function withOrgScope(query: any, organizationId?: string) {
-  if (!organizationId) return query
-  const org = new Types.ObjectId(organizationId)
-  query.$or = [
-    { organizationId: org },
-    { organizationId: { $exists: false } },
-    { organizationId: null },
-  ]
+export function withOrgScope(query: any, organizationId?: string) {
+  if (!organizationId || !Types.ObjectId.isValid(String(organizationId))) throw new UnauthorizedException('Missing database scope')
+  query.organizationId = new Types.ObjectId(String(organizationId))
   return query
+}
+
+function editable(data: any) {
+  const out: any = {}
+  for (const [key,value] of Object.entries(data || {})) {
+    if (key.startsWith('$') || key.includes('.') || ['_id','id','organizationId','ownerId','createdBy','accessCode','answerKey','sessionCount','createdAt','updatedAt'].includes(key)) continue
+    out[key]=value
+  }
+  return out
 }
 
 // ── Service ──────────────────────────────────────────────────────────────────
@@ -248,15 +252,21 @@ export class ExamsService {
   }
 
   async createSubject(data: any, organizationId?: string) {
-    return this.subjectModel.create({ ...data, organizationId: organizationId ? new Types.ObjectId(organizationId) : undefined })
+    return this.subjectModel.create({ ...editable(data), organizationId: organizationId ? new Types.ObjectId(organizationId) : undefined })
   }
 
   async updateSubject(id: string, data: any, organizationId?: string) {
     const query: any = { _id: new Types.ObjectId(id) }
     if (organizationId) query.organizationId = new Types.ObjectId(organizationId)
-    const doc = await this.subjectModel.findOneAndUpdate(query, data, { new: true })
+    const doc = await this.subjectModel.findOneAndUpdate(query, { $set: editable(data) }, { new: true, runValidators: true })
     if (!doc) throw new NotFoundException('Subject not found or access denied')
     return doc
+  }
+
+  async deleteSubject(id: string, organizationId?: string) {
+    const doc = await this.subjectModel.findOneAndUpdate(withOrgScope({ _id: new Types.ObjectId(id) }, organizationId), { $set: { isActive: false } })
+    if (!doc) throw new NotFoundException('Subject not found')
+    return { success: true }
   }
 
   // ══════════════════════════════════════════════════════
@@ -291,9 +301,9 @@ export class ExamsService {
         .limit(limit)
         .sort({ academicYear: -1, className: 1, fullName: 1 })
         .lean(),
-      this.studentModel.distinct('academicYear'),
-      this.studentModel.distinct('className'),
-      this.studentModel.distinct('school'),
+      this.studentModel.distinct('academicYear', withOrgScope({}, organizationId)),
+      this.studentModel.distinct('className', withOrgScope({}, organizationId)),
+      this.studentModel.distinct('school', withOrgScope({}, organizationId)),
     ])
 
     const studentIds = items.map((item: any) => item._id).filter(Boolean)
@@ -370,7 +380,7 @@ export class ExamsService {
   async updateStudent(id: string, data: any, organizationId?: string) {
     const query: any = { _id: new Types.ObjectId(id) }
     if (organizationId) query.organizationId = new Types.ObjectId(organizationId)
-    const doc = await this.studentModel.findOneAndUpdate(query, data, { new: true })
+    const doc = await this.studentModel.findOneAndUpdate(query, { $set: editable(data) }, { new: true, runValidators: true })
     if (!doc) throw new NotFoundException('Student not found or access denied')
     return doc
   }
@@ -404,8 +414,9 @@ export class ExamsService {
     return { total, page, limit, items }
   }
 
-  async getResultReport(filter: { academicYear?: string; className?: string; school?: string; examId?: string; examType?: string; customExamLabel?: string }) {
+  async getResultReport(filter: { academicYear?: string; className?: string; school?: string; examId?: string; examType?: string; customExamLabel?: string }, organizationId?: string) {
     const query: any = {}
+    withOrgScope(query, organizationId)
     if (filter.academicYear) query.academicYear = filter.academicYear
     if (filter.className) query.className = filter.className
     if (filter.school) query.school = filter.school
@@ -417,7 +428,7 @@ export class ExamsService {
     }
 
     if (!filter.examId && filter.examType) {
-      const examIds = await this.findExamIdsByType(filter.examType, filter.customExamLabel)
+      const examIds = await this.findExamIdsByType(filter.examType, filter.customExamLabel, organizationId)
       query.examId = { $in: examIds }
     }
 
@@ -538,18 +549,34 @@ export class ExamsService {
     return { total, page, limit, items }
   }
 
+  private async validateRefs(data: any, organizationId?: string) {
+    if (data.subjectId) {
+      const subject = await this.subjectModel.exists(withOrgScope({ _id: new Types.ObjectId(data.subjectId) }, organizationId))
+      if (!subject) throw new BadRequestException('Subject not found in your workspace')
+    }
+    const ids = [...(data.part1Questions || []), ...(data.part2Questions || []), ...(data.part3Questions || []), ...(data.questionIds || [])]
+    if (ids.length) {
+      const unique = [...new Set(ids.map(String))]
+      if (unique.some(v => !Types.ObjectId.isValid(v))) throw new BadRequestException('Invalid question ID')
+      const count = await this.questionModel.countDocuments(withOrgScope({ _id: { $in: unique.map(v => new Types.ObjectId(v)) } }, organizationId))
+      if (count !== unique.length) throw new BadRequestException('Question not found in your workspace')
+    }
+  }
+
   async createQuestion(data: any, createdBy?: string, organizationId?: string) {
+    await this.validateRefs(data, organizationId)
     return this.questionModel.create({
-      ...data,
+      ...editable(data),
       createdBy: createdBy ? new Types.ObjectId(createdBy) : undefined,
       organizationId: organizationId ? new Types.ObjectId(organizationId) : undefined
     })
   }
 
   async updateQuestion(id: string, data: any, organizationId?: string) {
+    await this.validateRefs(data, organizationId)
     const query: any = { _id: new Types.ObjectId(id) }
     if (organizationId) query.organizationId = new Types.ObjectId(organizationId)
-    const doc = await this.questionModel.findOneAndUpdate(query, data, { new: true })
+    const doc = await this.questionModel.findOneAndUpdate(query, { $set: editable(data) }, { new: true, runValidators: true })
     if (!doc) throw new NotFoundException('Question not found or access denied')
     return doc
   }
@@ -569,6 +596,8 @@ export class ExamsService {
     createdBy?: string,
     organizationId?: string,
   ): Promise<{ imported: number; skipped: number; ids: { part1: string[]; part2: string[]; part3: string[] } }> {
+    await this.validateRefs({ subjectId: defaultSubjectId }, organizationId)
+    for (const subjectId of new Set(rows.map(r => r.subjectId).filter(Boolean))) await this.validateRefs({subjectId}, organizationId)
     const valid = rows.filter(r => r.content?.trim() && r.type)
     const skipped = rows.length - valid.length
     const docs = valid.map(r => ({
@@ -684,6 +713,7 @@ export class ExamsService {
   }
 
   async createExam(data: any, createdBy?: string, organizationId?: string) {
+    await this.validateRefs(data, organizationId)
     // Cấu hình mặc định BGD 2025
     const defaultStructure = {
       part1Count: 18, part1ScorePerQ: 0.25,
@@ -693,7 +723,7 @@ export class ExamsService {
       part3Count: 6, part3ScorePerQ: 0.25,
     }
     return this.examModel.create({
-      ...data,
+      ...editable(data),
       structure: { ...defaultStructure, ...(data.structure || {}) },
       defaultSchool: data.defaultSchool || 'GDTX Lê Quí Đôn',
       createdBy: createdBy ? new Types.ObjectId(createdBy) : undefined,
@@ -702,9 +732,10 @@ export class ExamsService {
   }
 
   async updateExam(id: string, data: any, organizationId?: string) {
+    await this.validateRefs(data, organizationId)
     const query: any = { _id: new Types.ObjectId(id) }
     withOrgScope(query, organizationId)
-    const doc = await this.examModel.findOneAndUpdate(query, data, { new: true })
+    const doc = await this.examModel.findOneAndUpdate(query, { $set: editable(data) }, { new: true, runValidators: true })
     if (!doc) throw new NotFoundException('Exam not found or access denied')
     return doc
   }
@@ -976,6 +1007,7 @@ export class ExamsService {
     const variant = await this.variantModel.findOne({ examId: exam._id, variantCode }).lean()
     if (!variant) throw new NotFoundException('Không tìm thấy mã đề, vui lòng thử lại')
 
+    const sessionToken = crypto.randomBytes(32).toString('base64url')
     // Tạo session
     const session = await this.sessionModel.create({
       examId: exam._id,
@@ -987,6 +1019,8 @@ export class ExamsService {
       mode: 'ONLINE',
       startedAt: new Date(),
       status: 'IN_PROGRESS',
+      organizationId: exam.organizationId,
+      sessionTokenHash: crypto.createHash('sha256').update(sessionToken).digest('hex'),
     })
 
     // Tăng sessionCount
@@ -1019,6 +1053,7 @@ export class ExamsService {
 
     return {
       sessionId: session._id,
+      sessionToken,
       variantCode,
       timeLeftSeconds,
       exam: { title: exam.title, timeLimit: exam.timeLimit, structure: exam.structure },
@@ -1028,6 +1063,13 @@ export class ExamsService {
         part3: sortById(p3, variant.part3Order),
       },
     }
+  }
+
+  async assertSessionAccess(sessionId: string, token?: string) {
+    if (!Types.ObjectId.isValid(sessionId) || !token || token.length > 200) throw new UnauthorizedException('Invalid exam session')
+    const session = await this.sessionModel.findById(sessionId).select('+sessionTokenHash').lean()
+    const actual = crypto.createHash('sha256').update(token).digest('hex')
+    if (!session?.sessionTokenHash || session.sessionTokenHash !== actual) throw new UnauthorizedException('Invalid exam session')
   }
 
   /** Nộp bài — chấm điểm tự động */
@@ -1040,6 +1082,15 @@ export class ExamsService {
     if (!variant) throw new NotFoundException('Không tìm thấy mã đề')
 
     const exam = await this.examModel.findById(session.examId).lean()
+    for (const part of ['part1','part2','part3'] as const) {
+      const values = answers?.[part]
+      if (!values || typeof values !== 'object' || Array.isArray(values)) throw new BadRequestException('Invalid exam answers')
+      const keys = variant.answerKey?.[part] || {}
+      for (const [qid,value] of Object.entries(values)) {
+        if (!Object.prototype.hasOwnProperty.call(keys,qid)) throw new BadRequestException('Question does not belong to session')
+        if (part === 'part2' ? !Array.isArray(value) || value.length !== 4 || value.some(v => typeof v !== 'boolean') : typeof value !== 'string' || value.length > 2000) throw new BadRequestException('Invalid answer type')
+      }
+    }
     const scoring = (exam?.structure as any)?.part2Scoring || { correct1: 0, correct2: 0.25, correct3: 0.5, correct4: 1.0 }
 
     // ── Chấm Phần I ──────────────────────────────────────
@@ -1082,7 +1133,7 @@ export class ExamsService {
     const answeredCount = Object.keys(answers.part1 || {}).length + Object.keys(answers.part2 || {}).length + Object.keys(answers.part3 || {}).length
     const unansweredCount = Math.max(0, totalQuestions - answeredCount)
 
-    await this.sessionModel.findByIdAndUpdate(sessionId, {
+    const committed = await this.sessionModel.findOneAndUpdate({ _id: sessionId, status: 'IN_PROGRESS' }, {
       answers,
       score: totalScore,
       scoreBreakdown: {
@@ -1094,6 +1145,8 @@ export class ExamsService {
       submittedAt: new Date(),
       timeSpent,
     })
+
+    if (!committed) throw new BadRequestException('Phiên thi đã kết thúc')
 
     await this.persistStudentAndResult({
       sessionId: session._id,
@@ -1486,7 +1539,7 @@ export class ExamsService {
   }
 
   private async upsertStudent(studentInfo: any, examId: Types.ObjectId) {
-    const exam = await this.examModel.findById(examId).select('schoolYear startTime defaultSchool').lean()
+    const exam = await this.examModel.findById(examId).select('schoolYear startTime defaultSchool organizationId').lean()
     const academicYear =
       studentInfo?.academicYear
       || exam?.schoolYear
@@ -1501,8 +1554,8 @@ export class ExamsService {
     }
 
     return this.studentModel.findOneAndUpdate(
-      { fullName, className, academicYear, school },
-      { fullName, className, academicYear, school },
+      { fullName, className, academicYear, school, organizationId: exam?.organizationId },
+      { fullName, className, academicYear, school, organizationId: exam?.organizationId },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     )
   }
@@ -1527,6 +1580,7 @@ export class ExamsService {
     return this.examResultModel.findOneAndUpdate(
       { sessionId: payload.sessionId },
       {
+        organizationId: student.organizationId,
         studentId: student._id,
         examId: payload.examId,
         sessionId: payload.sessionId,
@@ -1720,7 +1774,7 @@ export class ExamsService {
   async updateQuizSet(id: string, data: any, organizationId?: string) {
     const query: any = { _id: new Types.ObjectId(id) }
     if (organizationId) query.organizationId = new Types.ObjectId(organizationId)
-    const doc = await this.quizSetModel.findOneAndUpdate(query, data, { new: true })
+    const doc = await this.quizSetModel.findOneAndUpdate(query, { $set: editable(data) }, { new: true, runValidators: true })
     if (!doc) throw new NotFoundException('Quiz set không tồn tại')
     return doc
   }
@@ -2008,7 +2062,7 @@ export class ExamsService {
     const query: any = { _id: new Types.ObjectId(id) }
     if (organizationId) query.organizationId = new Types.ObjectId(organizationId)
     const payload = {
-      ...data,
+      ...editable(data),
       ...(Array.isArray(data?.questions) ? { questions: normalizePollQuestions(data.questions) } : {}),
     }
     const doc = await this.pollSetModel.findOneAndUpdate(query, payload, { new: true })
@@ -2406,7 +2460,7 @@ export class ExamsService {
     organizationId?: string
   }): Promise<Buffer> {
     const exam = await this.examModel
-      .findById(examId)
+      .findOne(withOrgScope({ _id: new Types.ObjectId(examId) }, opts.organizationId))
       .populate('subjectId', 'name code')
       .lean()
     if (!exam) throw new NotFoundException('Đề thi không tồn tại')
@@ -2545,10 +2599,12 @@ export class ExamsService {
     subjectId?: string
     gradeLevel?: number
     questionIds?: string[]
+    matchingItems?: any[]
     cards?: Array<{ front: string; back: string; hint?: string }>
     organizationId?: string
     createdBy?: string
   }) {
+    await this.validateRefs(data, data.organizationId)
     const accessCode = genAccessCode()
     let cards: any[] = []
 
@@ -2581,7 +2637,7 @@ export class ExamsService {
       cards = data.cards
     }
 
-    if (cards.length === 0) throw new BadRequestException('Bộ flashcard phải có ít nhất 1 thẻ')
+    if (!data.title?.trim()) throw new BadRequestException('Nhập tên bộ flashcard')
 
     return this.flashcardSetModel.create({
       title: data.title,
@@ -2589,6 +2645,7 @@ export class ExamsService {
       subjectId: data.subjectId ? new Types.ObjectId(data.subjectId) : undefined,
       gradeLevel: data.gradeLevel,
       cards,
+      matchingItems: Array.isArray(data.matchingItems) ? data.matchingItems : [],
       accessCode,
       organizationId: data.organizationId ? new Types.ObjectId(data.organizationId) : undefined,
       createdBy: data.createdBy ? new Types.ObjectId(data.createdBy) : undefined,
@@ -2599,6 +2656,13 @@ export class ExamsService {
     const query: any = { isActive: true }
     if (organizationId) query.organizationId = new Types.ObjectId(organizationId)
     return this.flashcardSetModel.find(query).sort({ createdAt: -1 }).lean()
+  }
+
+  async updateFlashcardSet(setId: string, data: any, organizationId?: string) {
+    const allowed = Object.fromEntries(Object.entries(editable(data)).filter(([key]) => ['title','description','cards','matchingItems','gradeLevel'].includes(key)))
+    const doc = await this.flashcardSetModel.findOneAndUpdate(withOrgScope({ _id: new Types.ObjectId(setId) }, organizationId), { $set: allowed }, { new: true, runValidators: true })
+    if (!doc) throw new NotFoundException('Flashcard set not found')
+    return doc
   }
 
   async deleteFlashcardSet(setId: string, organizationId?: string) {
@@ -2656,6 +2720,7 @@ export class ExamsService {
       description: (set as any).description,
       subject: (set as any).subjectId,
       gradeLevel: (set as any).gradeLevel,
+      matchingItems: (set as any).matchingItems || [],
       totalCards: (set as any).cards.length,
       dueCount,
       cards: cardsWithProgress,
@@ -2671,6 +2736,8 @@ export class ExamsService {
   }) {
     const set = await this.flashcardSetModel.findOne({ accessCode: opts.accessCode, isActive: true }).lean()
     if (!set) throw new NotFoundException('Bộ flashcard không tồn tại')
+
+    if (!opts.sessionKey || opts.sessionKey.length > 200 || !Number.isInteger(opts.cardIndex) || opts.cardIndex < 0 || opts.cardIndex >= set.cards.length || ![0,1,2,3].includes(opts.rating)) throw new BadRequestException('Invalid flashcard progress')
 
     const existing = await this.flashcardProgressModel.findOne({
       setId: set._id,

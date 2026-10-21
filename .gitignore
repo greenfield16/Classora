@@ -44,3 +44,6 @@ functions/lib/
 
 # Firebase emulator secrets
 .secret.local
+
+# Local media persistence (back up separately from source)
+backend/uploads/

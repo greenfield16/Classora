@@ -1,3 +1,4 @@
+import { CommunityModule } from './community/community.module'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { MongooseModule } from '@nestjs/mongoose'
@@ -13,10 +14,11 @@ import { StorageModule } from './storage/storage.module'
       inject: [ConfigService],
       connectionName: 'mgmt',
       useFactory: (cfg: ConfigService) => ({
-        uri: cfg.get<string>('MONGO_URI_MGMT') || cfg.get<string>('MONGODB_URI_MGMT') || cfg.get<string>('MONGODB_URI') || '',
-        dbName: cfg.get<string>('MONGODB_DB_MGMT') || cfg.get<string>('MONGODB_DB') || 'greenfield_mgmt',
+        uri: cfg.get<string>('MONGODB_URI') || '',
+        dbName: cfg.get<string>('MONGODB_DB') || 'classora',
       }),
     }),
+    CommunityModule,
     AuthModule,
     StorageModule,
     ExamsModule,

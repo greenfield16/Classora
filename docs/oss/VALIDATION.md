@@ -42,3 +42,19 @@ The requested external SSO provider, callback route/hosting rewrite and example 
 Removed the private AI worker protocol from both server runtimes. AI now uses OpenAI Responses with a fixed `gpt-4.1-mini` default, server-only `OPENAI_API_KEY`, text/image input, JSON mode where requested, a request timeout and `store: false`. Firebase binds the new secret. The browser API contract is unchanged.
 
 Backend tests: 11/11 pass, including mocked text/image transport, missing key, HTTP authentication error, incomplete response and refusal handling; adapter parity is asserted between backend and Functions. Backend and Functions compile. No live OpenAI request was made; credentials, provider access and educational output quality remain unverified. Frontend source did not change.
+
+
+### MongoDB consolidation (2026-10-21)
+
+The current frontend persistence/auth/AI path is NestJS + MongoDB + JWT, replacing the historical Firebase path described above. Firebase runtime packages, Functions sources/config/rules and the obsolete migration script were removed. Existing cloud/local databases were not accessed, migrated or deleted.
+
+- Backend unit suite: 11/11 pass, covering parser/scoring, auth/DTO/HTTP and mocked OpenAI behavior.
+- An isolated MongoDB 8.0.15 process, bound to 127.0.0.1:27029 with temporary storage, passed the synthetic HTTP integration scenario. Each run creates/drops a new random test database. CI is configured with MongoDB 7.
+- Integration includes the real frontend adapters over HTTP; teacher/student auth, tenant/legacy-record isolation, question/exam publication, real session capability/grade/result persistence, repeated submission rejection, profile/feedback, empty and populated flashcards, quiz/poll room setup/join, PDF bytes, skill publication/upload/playback/submission and password changes.
+- Fixed PDF font loading and empty flashcard authoring exposed by activating the backend path. Student filter-option queries are scoped too.
+- Fresh dependency installs succeeded using the Firebase-free lockfiles. Backend install retains upstream node-domexception/jpeg-exif deprecation notices. Frontend full audit retains the previously tracked seven development findings; production auditing is separate.
+- Frontend lint and static build pass. No browser automation, actual microphone recording, live OpenAI call, Docker startup or production migration was performed.
+
+Database/account/index migration and separate local recording-file backups are documented in `docs/DATABASE.md` and `docs/SELF_HOSTING.md`. Remaining deployment, timing, privacy, retention and abuse-control work is explicit; successful integration is not production certification.
+
+Clean-source follow-up: backend tests/build and the MongoDB integration passed again with freshly installed dependencies and no private environment files; frontend zero-warning lint/static build passed too. Both production dependency audits report zero vulnerabilities. Earlier GitHub failures were missing optional peer metadata in lockfiles; the repaired locks now pass fresh `npm ci`.

@@ -3,10 +3,9 @@ import * as bcrypt from 'bcryptjs'
 import * as dotenv from 'dotenv'
 import * as path from 'path'
 
-dotenv.config({ path: path.resolve(process.cwd(), '../.env') })
 dotenv.config({ path: path.resolve(process.cwd(), '.env') })
 
-const uri = process.env.MONGO_URI_MGMT || process.env.MONGODB_URI_MGMT || process.env.MONGODB_URI
+const uri = process.env.MONGODB_URI
 if (!uri) {
   console.error('Missing MONGODB_URI')
   process.exit(1)
@@ -22,7 +21,7 @@ const UserSchema = new mongoose.Schema({
 
 async function seed() {
   await mongoose.connect(uri, {
-    dbName: process.env.MONGODB_DB_MGMT || process.env.MONGODB_DB || 'greenfield_mgmt',
+    dbName: process.env.MONGODB_DB || 'classora',
   })
 
   const User = mongoose.model('User', UserSchema)

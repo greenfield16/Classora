@@ -24,4 +24,4 @@ export class Student {
 export const StudentSchema = SchemaFactory.createForClass(Student)
 StudentSchema.index({ organizationId: 1 })
 StudentSchema.index({ academicYear: 1, className: 1, fullName: 1 })
-StudentSchema.index({ fullName: 1, className: 1, academicYear: 1, school: 1 }, { unique: true })
+StudentSchema.index({ organizationId: 1, fullName: 1, className: 1, academicYear: 1, school: 1 }, { unique: true })

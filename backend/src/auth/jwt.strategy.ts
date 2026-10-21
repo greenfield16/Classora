@@ -17,6 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     const user = await this.auth.validateById(payload.sub)
     if (!user || !user.isActive) throw new UnauthorizedException()
-    return user
+    const result = typeof (user as any).toObject === 'function' ? (user as any).toObject() : user
+    return { ...result, userId: String((user as any)._id), organizationId: (user as any).organizationId || (user as any)._id }
   }
 }

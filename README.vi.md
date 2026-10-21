@@ -1,90 +1,59 @@
 # Classora
 
-**Không gian quản lý đề thi cho giáo viên, kết hợp làm bài và ôn tập trên trình duyệt.**
+[English](README.md) · [Cài đặt](docs/SELF_HOSTING.md) · [Database](docs/DATABASE.md) · [Trạng thái tính năng](docs/FEATURE_STATUS.md)
 
-[English](README.md) · [Cài đặt](docs/SELF_HOSTING.md) · [Trạng thái tính năng](docs/FEATURE_STATUS.md) · [Audit UX/UI](docs/ux/AUDIT.md) · [Roadmap](ROADMAP.md)
+Classora là bộ công cụ giáo dục mã nguồn mở giúp giáo viên tổ chức ngân hàng câu hỏi, soạn đề, theo dõi kết quả và hỗ trợ học sinh ôn tập. Giao diện chủ yếu bằng tiếng Việt; hỗ trợ trắc nghiệm, đúng/sai và trả lời ngắn.
 
-Classora tập hợp ngân hàng câu hỏi, soạn đề, import DOCX, kết quả học sinh và hoạt động ôn tập trong một dự án giáo dục. Giao diện chủ yếu bằng tiếng Việt, hỗ trợ câu hỏi trắc nghiệm, đúng/sai và trả lời ngắn.
+**Bản xem trước đang phát triển**, do **Joseph. MD** tự khởi tạo và duy trì, giấy phép **Apache-2.0**. Chưa phải hệ thống đã được kiểm định đầy đủ để vận hành với dữ liệu học sinh thật.
 
-Phạm vi dự kiến công khai là **toàn bộ ứng dụng**: frontend, backend, Firebase Functions, rules, kiểm thử và tài liệu. Core đọc DOCX/chấm điểm vẫn có thể trích xuất để dùng riêng.
+## Một luồng dữ liệu duy nhất
 
-> **Bản xem trước dành cho phát triển.** Đây là bản source preview đang phát triển; mã gốc được cấp phép Apache-2.0, ghi tên Joseph. MD; dependency giữ license riêng. Một số tính năng hiển thị chưa hoàn thiện. Chưa xác nhận an toàn production cho dữ liệu học viên thật.
-
-## Dự án gồm những gì?
-
-- Workspace giáo viên: quản lý môn/câu hỏi, soạn đề, xem kết quả và hồ sơ học sinh.
-- Import DOCX có cấu trúc tiếng Việt; kiểm thử tổng hợp bao phủ ba loại câu hỏi.
-- Giao diện vào thi, trả lời có thời gian, nộp bài và xem kết quả.
-- Giao diện flashcard/SRS, ghép đôi, quiz và bình chọn với mức tích hợp khác nhau.
-- Đề kỹ năng reading, listening/TTS, writing, quiz và mã thu âm/gửi bài qua trình duyệt.
-- AI tùy chọn: sinh câu hỏi, giải thích và phân tích qua OpenAI trực tiếp (chỉ cần API key phía server).
-
-**Có giao diện không đồng nghĩa luồng đã hoàn chỉnh.** Adapter Firebase của quiz/poll đang là stub; chấm camera trả điểm giả cố định; analytics/PDF còn thiếu tích hợp. Nộp bài công khai còn vấn đề session/xác thực. Xem [bảng trạng thái](docs/FEATURE_STATUS.md) trước khi thử hoặc triển khai.
-
-Ứng dụng mở thẳng vào workspace giáo viên tại `/`; người chưa đăng nhập được chuyển tới `/admin/login`. Học sinh dùng trực tiếp link bài thi/ôn tập được chia sẻ. Phần giới thiệu và cài đặt nằm trong README; ứng dụng không còn landing bán hàng hay bảng giá.
-
-## Kiến trúc
-
-| Thư mục | Vai trò |
-|---|---|
-| `frontend/` | Next.js 16 / React 19, static export, Firebase SDK |
-| `backend/` | NestJS 12, MongoDB/Mongoose, JWT riêng, parser DOCX và dịch vụ báo cáo |
-| `functions/` | Firebase callable functions, chấm điểm và AI tùy chọn |
-| `core/` | Mẫu package độc lập và kiểm thử domain |
-| `docs/`, `scripts/` | Hướng dẫn, audit, chuẩn bị phát hành và inventory |
-
-Giao diện chính hiện dùng Firebase Auth/Firestore/callable functions. Backend NestJS/MongoDB có đường xác thực và dữ liệu riêng. Chỉ đổi URL API chưa đủ để chuyển toàn giao diện sang MongoDB.
-
-## Thử ví dụ local đã kiểm tra
-
-Dùng Node 22 (`.nvmrc`), npm và Python 3:
-
-```sh
-python3 scripts/export-core.py
-cd artifacts/green-exams-core
-npm ci
-npm test
-npm run demo
+```text
+Frontend Next.js → API NestJS → MongoDB
+                       ├→ OpenAI tùy chọn
+                       ├→ file thu âm lưu phía server
+                       └→ R2 tùy chọn cho hình ảnh
 ```
 
-Ví dụ không cần Firebase, MongoDB hoặc AI. Demo trả điểm **0.25**; kiểm thử dùng câu hỏi tự tạo. Exporter không ghi đè candidate cũ; hãy chuyển bản cũ sang chỗ khác trước khi tạo lại.
+Đăng nhập JWT, hồ sơ giáo viên, phản hồi, câu hỏi/đề thi, học sinh/kết quả, quiz/poll, flashcard và đề kỹ năng đều đi qua backend và MongoDB. Ứng dụng hiện không cần Firebase Auth, Firestore, Firebase Storage hoặc Firebase Functions. Khóa database và OpenAI không đưa xuống trình duyệt.
 
-## Phát triển toàn ứng dụng
+Ứng dụng mở thẳng vào khu vực giáo viên. Học sinh dùng các đường dẫn đề thi/ôn tập được chia sẻ. Trang giới thiệu là README này; ứng dụng không có trang bán hàng hoặc bảng giá.
 
-Làm theo [hướng dẫn cài đặt/tự host](docs/SELF_HOSTING.md) trong bản sao mới với dịch vụ thử nghiệm riêng. Hướng dẫn phân biệt backend MongoDB với frontend Firebase, nêu biến môi trường và rewrite cho static hosting.
+## Tính năng
 
-```sh
-# Sau khi cấu hình backend/.env local riêng
-cd backend
-npm ci
-npm test
-npm run build
+- Ngân hàng môn học/câu hỏi, soạn tay và import DOCX.
+- Phát hành đề, trộn mã đề, tạo phiên thi thật, chấm và lưu điểm phía server.
+- Danh sách học sinh/kết quả, phân tích câu hỏi và xuất báo cáo PDF.
+- Quiz/poll, flashcard, ghép thẻ và ôn tập lặp lại.
+- Đề kỹ năng, trả lời viết và nộp file ghi âm.
+- AI tùy chọn qua OpenAI trực tiếp: sinh câu hỏi, giải thích, phân tích và đọc ảnh OMR. Chỉ cần `OPENAI_API_KEY` ở backend.
 
-# Sau khi cấu hình frontend/.env.local cho Firebase thử nghiệm
-cd ../frontend
-npm ci
-npm run lint
-npm run build
-npm run dev
+Xem [bảng trạng thái](docs/FEATURE_STATUS.md) để biết phạm vi đã kiểm tra. Chất lượng AI, chống lạm dụng, thời gian thi và vận hành production vẫn cần hoàn thiện.
 
-cd ../functions
-npm ci
-npm run lint
-npm run build
-```
+## Chạy thử
 
-Chưa có quy trình production một lệnh. Cần sửa [blocker phát hành](docs/oss/READINESS.md), nhất là nộp bài công khai, phân quyền giáo viên/tenant, rules và khôi phục bài làm. AI/storage bên ngoài cần cấu hình và có thể phát sinh phí dịch vụ.
+Dùng Node 22 và database thử nghiệm riêng; xem [hướng dẫn đầy đủ](docs/SELF_HOSTING.md).
 
-## Chất lượng và giới hạn
+1. Chạy MongoDB riêng, ví dụ `docker compose -f docker-compose.local.yml up -d`.
+2. Chép `backend/.env.example` thành `backend/.env`; đặt cấu hình MongoDB, JWT secret ngẫu nhiên và thông tin quản trị viên.
+3. Trong `backend/`: `npm ci`, `npm run build`, `npm run seed`, `npm run start:prod`.
+4. Chép `frontend/.env.example` thành `frontend/.env.local`, đặt URL backend.
+5. Trong `frontend/`: `npm ci`, `npm run dev`; mở localhost:3000 rồi đăng nhập.
 
-Lần kiểm tra local gần nhất: 9 test backend đạt, lint frontend 0 warning, build frontend/backend/Functions đạt. Chưa có kiểm chứng đầy đủ E2E MongoDB/Firebase, thiết bị thu âm thực, tuân thủ accessibility hay production.
+Có thêm Docker Compose cho môi trường phát triển. Thay đổi này **không tự chuyển hoặc xóa dữ liệu Firebase/MongoDB cũ**. Đọc [hướng dẫn database và chuyển dữ liệu](docs/DATABASE.md) trước khi đổi hệ thống đang dùng.
 
-Audit dependency backend/Functions và frontend production sạch ở lần kiểm tra gần nhất; dependency phát triển frontend còn một advisory `braces` chưa có bản vá, được tính thành 7 mục. Xem [kết quả kiểm tra](docs/oss/VALIDATION.md), [báo cáo dependency](docs/oss/WARNING-CLEANUP.md) và [audit UX/UI Impeccable](docs/ux/AUDIT.md).
+## Kiểm tra
 
-## Đóng góp và phát hành
+- Backend: `npm test` và `npm run build`.
+- Frontend: `npm run lint` và `npm run build`.
+- Tích hợp MongoDB: trong `backend/`, chạy `TEST_MONGODB_URI=mongodb://127.0.0.1:27017 npm run test:integration` với MongoDB local dành riêng cho test. Test tạo database tên ngẫu nhiên, dùng dữ liệu giả rồi dọn database đó.
 
-Ưu tiên: nộp bài đáng tin cậy, form/dialog truy cập được bằng bàn phím, hiển thị đúng trạng thái tính năng, lưu nháp, rules tests và hướng dẫn triển khai. Đọc [CONTRIBUTING.md](CONTRIBUTING.md), chỉ dùng dữ liệu tổng hợp và ghi rõ nguồn mã/ảnh. Đóng góp tuân theo Apache-2.0 như mô tả trong CONTRIBUTING.md.
+Kiểm thử tích hợp gọi cả adapter frontend thật qua HTTP, kiểm tra đăng nhập, phân quyền workspace, đề thi/nộp bài/chấm điểm, báo cáo PDF và bài kỹ năng/thu âm. Đây không phải kiểm thử trình duyệt hoặc micro thật; chưa gọi OpenAI bằng khóa thật.
 
-Kênh báo lỗi bảo mật riêng tư cần chủ dự án xác nhận theo [SECURITY.md](SECURITY.md). Copyright 2026 **Joseph. MD**. Mã gốc và tài liệu theo [Apache-2.0](LICENSE); xem [NOTICE](NOTICE), [thông báo bên thứ ba](THIRD_PARTY_NOTICES.md), [license/nguồn gốc](docs/oss/LICENSE-DECISION.md) và [checklist public toàn dự án](docs/oss/FULL-PROJECT-PUBLICATION.md).
+Core parser/chấm điểm có thể dùng riêng: chạy `python3 scripts/export-core.py`, sau đó `npm ci`, `npm test`, `npm run demo` trong `artifacts/green-exams-core`. Core không cần database hoặc AI.
 
-Phạm vi public là mã ứng dụng đề thi này; EDU ERP/EduEng thương mại, secret, hồ sơ/thu âm học sinh, backup và đề thi chưa có quyền phân phối nằm ngoài gói phát hành.
+## Đóng góp và giấy phép
+
+Xem [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md) và [roadmap](ROADMAP.md). Không đưa khóa bí mật, dữ liệu học sinh hoặc nội dung đề không có quyền chia sẻ lên repo.
+
+Copyright 2026 **Joseph. MD**. Mã nguồn/tài liệu gốc dùng [Apache-2.0](LICENSE); dependency giữ giấy phép riêng theo [NOTICE](NOTICE) và [third-party notices](THIRD_PARTY_NOTICES.md). Logo là chữ Classora. Public mã nguồn không đồng nghĩa cho phép công khai dữ liệu học sinh hoặc đề thi của bên khác.

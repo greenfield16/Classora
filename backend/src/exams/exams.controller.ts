@@ -54,6 +54,10 @@ export class ExamsController {
     return this.svc.updateSubject(id, body, req.user?.organizationId)
   }
 
+  @Delete('subjects/:id')
+  @UseGuards(JwtAuth(), LicenseGuard)
+  deleteSubject(@Param('id') id: string, @Req() req: any) { return this.svc.deleteSubject(id, req.user.organizationId) }
+
   // ══════════════════════════════════════════════════════
   //  QUESTION BANK
   // ══════════════════════════════════════════════════════
@@ -166,7 +170,7 @@ export class ExamsController {
 
   @Get('results/report')
   @UseGuards(JwtAuth(), LicenseGuard)
-  getResultReport(@Query() q: ResultReportQueryDto) {
+  getResultReport(@Query() q: ResultReportQueryDto, @Req() req: any) {
     return this.svc.getResultReport({
       academicYear: q.academicYear,
       className: q.className,
@@ -174,7 +178,7 @@ export class ExamsController {
       examId: q.examId,
       examType: q.examType,
       customExamLabel: q.customExamLabel,
-    })
+    }, req.user?.organizationId)
   }
 
   // ══════════════════════════════════════════════════════
@@ -489,7 +493,8 @@ export class ExamsController {
    * Body: { part1: { qId: 'A' }, part2: { qId: [true,false,true,false] }, part3: { qId: '3.14' } }
    */
   @Post('sessions/:id/submit')
-  submitSession(@Param('id') id: string, @Body() body: any) {
+  async submitSession(@Param('id') id: string, @Body() body: any, @Req() req: any) {
+    await this.svc.assertSessionAccess(id, req.headers['x-exam-token'])
     return this.svc.submitSession(id, body)
   }
 
@@ -522,10 +527,12 @@ export class ExamsController {
    */
   @Post('session/:sessionId/track-event')
   @HttpCode(200)
-  trackExamEvent(
+  async trackExamEvent(
     @Param('sessionId') sessionId: string,
     @Body() dto: TrackExamEventDto,
+    @Req() req: any,
   ) {
+    await this.svc.assertSessionAccess(sessionId, req.headers['x-exam-token'])
     return this.svc.trackSessionEvent(sessionId, dto.eventType, dto.metadata)
   }
 
@@ -534,7 +541,8 @@ export class ExamsController {
    * Called when student submits or timeout occurs
    */
   @Post('session/submit')
-  submitExamSession(@Body() dto: SubmitExamDto) {
+  async submitExamSession(@Body() dto: SubmitExamDto, @Req() req: any) {
+    await this.svc.assertSessionAccess(dto.sessionId, req.headers['x-exam-token'])
     return this.svc.submitExamSession(dto)
   }
 
@@ -543,7 +551,8 @@ export class ExamsController {
    * Used by chatbot to provide smart context & suggestions
    */
   @Get('session/:sessionId/analytics')
-  async getSessionAnalytics(@Param('sessionId') sessionId: string) {
+  async getSessionAnalytics(@Param('sessionId') sessionId: string, @Req() req: any) {
+    await this.svc.assertSessionAccess(sessionId, req.headers['x-exam-token'])
     return this.svc.getSessionAnalyticsWithAI(sessionId)
   }
 
@@ -552,7 +561,8 @@ export class ExamsController {
    * Used to show notification bubbles or suggestions
    */
   @Get('session/:sessionId/chat-context')
-  async getExamChatContext(@Param('sessionId') sessionId: string) {
+  async getExamChatContext(@Param('sessionId') sessionId: string, @Req() req: any) {
+    await this.svc.assertSessionAccess(sessionId, req.headers['x-exam-token'])
     const session = await this.svc.getSessionLog(sessionId)
     if (!session) {
       return { context: '', riskLevel: 'low' }
@@ -608,7 +618,8 @@ export class ExamsController {
   // ── AI Explanation — Giải thích đáp án ───────────────────────────────────
 
   @Get('sessions/:id/explanation')
-  async getAnswerExplanation(@Param('id') id: string) {
+  async getAnswerExplanation(@Param('id') id: string, @Req() req: any) {
+    await this.svc.assertSessionAccess(id, req.headers['x-exam-token'])
     return this.svc.getSessionExplanation(id)
   }
 
@@ -626,9 +637,13 @@ export class ExamsController {
     return this.svc.createFlashcardSet({
       ...body,
       organizationId: req.user?.organizationId,
-      createdBy: req.user?.sub || req.user?.id,
+      createdBy: req.user?.userId,
     })
   }
+
+  @Patch('flashcards/sets/:setId')
+  @UseGuards(JwtAuth(), LicenseGuard)
+  updateFlashcardSet(@Param('setId') id: string, @Body() body: any, @Req() req: any) { return this.svc.updateFlashcardSet(id, body, req.user.organizationId) }
 
   @Delete('flashcards/sets/:setId')
   @UseGuards(JwtAuth(), LicenseGuard)
